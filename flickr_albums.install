@@ -96,18 +96,6 @@ function get_custom_fields() {
 
   return array(
     // Album fields
-    FIELD_PREFIX . 'album_nid' => array(
-      'field' => array(
-        'field_name' => FIELD_PREFIX . 'album_nid',
-        'label' => $t('Album Node ID'),
-        'type' => 'number_integer',
-      ),
-      'instance' => array(
-        'field_name' => FIELD_PREFIX . 'album_nid',
-        'bundle' => ALBUM_NODE_TYPE,
-      ),
-    ),
-
     FIELD_PREFIX . 'primary_photo' => array(
       'field' => array(
         'field_name' => FIELD_PREFIX . 'primary_photo',
@@ -120,26 +108,38 @@ function get_custom_fields() {
       ),
     ),
 
-    FIELD_PREFIX . 'photo_count' => array(
+    FIELD_PREFIX . 'description' => array(
       'field' => array(
-        'field_name' => FIELD_PREFIX . 'photo_count',
-        'label' => $t('The number of photos in this album'),
-        'type' => 'number_integer',
+        'field_name' => FIELD_PREFIX . 'description',
+        'label' => $t('Description of the album'),
+        'type' => 'text',
       ),
       'instance' => array(
-        'field_name' => FIELD_PREFIX . 'photo_count',
+        'field_name' => FIELD_PREFIX . 'description',
         'bundle' => ALBUM_NODE_TYPE,
       ),
     ),
 
-    FIELD_PREFIX . 'video_count' => array(
+    FIELD_PREFIX . 'count_photos' => array(
       'field' => array(
-        'field_name' => FIELD_PREFIX . 'video_count',
+        'field_name' => FIELD_PREFIX . 'count_photos',
+        'label' => $t('The number of photos in this album'),
+        'type' => 'number_integer',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'count_photos',
+        'bundle' => ALBUM_NODE_TYPE,
+      ),
+    ),
+
+    FIELD_PREFIX . 'count_videos' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'count_videos',
         'label' => $t('The number of videos in this album'),
         'type' => 'number_integer',
       ),
       'instance' => array(
-        'field_name' => FIELD_PREFIX . 'video_count',
+        'field_name' => FIELD_PREFIX . 'count_videos',
         'bundle' => ALBUM_NODE_TYPE,
       ),
     ),
@@ -169,15 +169,15 @@ function get_custom_fields() {
     ),
 
     // Photo fields
-    FIELD_PREFIX . 'photo_id' => array(
+    FIELD_PREFIX . 'album_id' => array(
       'field' => array(
-        'field_name' => FIELD_PREFIX . 'photo_id',
-        'label' => $t('Flickr ID of the photo'),
-        'type' => 'text',
+        'field_name' => FIELD_PREFIX . 'album_id',
+        'label' => $t('Flickr album ID this photo is in'),
+        'type' => 'number_integer',
       ),
       'instance' => array(
-        'field_name' => FIELD_PREFIX . 'photo_id',
-        'bundle' => PHOTO_NODE_TYPE,
+        'field_name' => FIELD_PREFIX . 'album_id',
+        'bundle' => ALBUM_NODE_TYPE,
       ),
     ),
 
@@ -185,6 +185,10 @@ function get_custom_fields() {
       'field' => array(
         'field_name' => FIELD_PREFIX . 'visibility_public',
         'label' => $t('If this photo is publicly visible'),
+        'settings' => array(
+          'on' => 1,
+          'off' => 0,
+        ),
         'type' => 'list_boolean',
       ),
       'instance' => array(
@@ -230,6 +234,18 @@ function get_custom_fields() {
     ),
 
     // Mixed fields
+    FIELD_PREFIX . 'flickr_id' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'flickr_id',
+        'label' => $t('Flickr ID of the object'),
+        'type' => 'number_integer',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'flickr_id',
+        'bundle' => array(ALBUM_NODE_TYPE, PHOTO_NODE_TYPE),
+      ),
+    ),
+
     FIELD_PREFIX . 'secret' => array(
       'field' => array(
         'field_name' => FIELD_PREFIX . 'secret',
@@ -266,14 +282,14 @@ function get_custom_fields() {
       ),
     ),
 
-    FIELD_PREFIX . 'date_updated' => array(
+    FIELD_PREFIX . 'date_update' => array(
       'field' => array(
-        'field_name' => FIELD_PREFIX . 'date_updated',
+        'field_name' => FIELD_PREFIX . 'date_update',
         'label' => $t('The date when this object was last updated on Flickr'),
         'type' => 'number_integer',
       ),
       'instance' => array(
-        'field_name' => FIELD_PREFIX . 'date_updated',
+        'field_name' => FIELD_PREFIX . 'date_update',
         'bundle' => array(ALBUM_NODE_TYPE, PHOTO_NODE_TYPE),
       ),
     ),

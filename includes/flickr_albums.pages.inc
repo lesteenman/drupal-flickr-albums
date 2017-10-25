@@ -7,11 +7,19 @@ function flickr_albums_list() {
   $albums = array();
 
   $flickr = flickrapi_phpFlickr();
+
   $token = variable_get('flickr_albums_token', null);
-  $userId = variable_get('flickr_albums_userId', null);
+  if (!empty($token)) {
+    $flickr->setToken($token);
+  }
+
+  $userId = variable_get('flickr_albums_userId', '11467783@N05');
   if ($userId) {
     $albums = $flickr->photosets_getList($userId);
   }
+
+  $album_info = $flickr->photosets_getInfo($albums['photoset'][0]['id']);
+  $photos = $flickr->photosets_getPhotos($albums['photoset'][0]['id']);
 
   // TODO: Get albums from the database. Based on the unique albumIds of the photo IDs.
 
@@ -21,7 +29,7 @@ function flickr_albums_list() {
     '#albums' => $albums,
   );
 
-  dpm(['albums' => $albums]);
+  dpm(['albums' => $albums, 'photos' => $photos, 'album info' => $album_info]);
 
   return drupal_render($build);
 }

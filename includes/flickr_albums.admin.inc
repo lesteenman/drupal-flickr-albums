@@ -60,10 +60,26 @@ function flickr_albums_settings_form() {
     '#default_value' => variable_get('flickr_albums_block_top_count', 3),
   );
 
+  $form['flickr_albums_get_batch_button'] = array(
+    '#type' => 'submit',
+    '#value' => t('Update all albums immediately'),
+    '#description' => t('Update all albums immediately. This might take a long time if you have a lot of albums and/or photos in your Flickr account.'),
+    '#submit' => array('flickr_albums_update_all'),
+  );
+
+  // TODO: Add:
+  // - photos per page
+  // - albums per page
+
   $form['#validate'][] = 'flickr_albums_settings_form_validate';
   $form['#submit'][] = 'flickr_albums_settings_form_submit';
 
   return system_settings_form($form);
+}
+
+function flickr_albums_update_all() {
+  module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.cron');
+  flickr_albums_process_batch(-1);
 }
 
 function flickr_albums_settings_form_validate($form, &$form_state) {
