@@ -1,0 +1,281 @@
+<?php
+
+function flickr_albums_install() {
+  node_types_rebuild();
+  add_custom_fields();
+}
+
+/**
+ * Implements hook_uninstall()
+ */
+function flickr_albums_uninstall() {
+  variable_del('flickr_albums_userId');
+  variable_del('flickr_albums_token');
+  variable_del('flickr_albums_batch_size');
+  variable_del('flickr_albums_path');
+
+  $sql = 'select nid from {node} n where n.type = :photo_type or n.type = :album_type';
+  $result = db_query($sql, array(
+    ':photo_type' => PHOTO_NODE_TYPE,
+    ':album_type' => ALBUM_NODE_TYPE,
+  ));
+  $nodeIds = array();
+  foreach ($result as $row) $nodeIds[] = $row->nid;
+  node_delete_multiple($nodeIds);
+
+  delete_custom_fields();
+
+  node_type_delete(PHOTO_NODE_TYPE);
+  node_type_delete(ALBUM_NODE_TYPE);
+}
+
+/**
+ * Implements hook_requirements()
+ */
+function flickr_albums_requirements($phase) {
+  $requirements = array();
+
+  // Ensure translations don't break at install time.
+  $t = get_t();
+
+  // Check if FlickAPI is available.
+  if ($phase == 'runtime') {
+    if (!module_exists('flickrapi')) {
+      $requirements['flickrgallery'] = array(
+        'title' => $t('Flick Gallery'),
+        'description' => $t('You need to install the !FlickrAPI module.', array('!FlickrAPI' => l($t('FlickrAPI'), 'http://drupal.org/project/flickrapi'))),
+        'severity' => REQUIREMENT_ERROR,
+        'value' => $t('Not installed'),
+      );
+    }
+  }
+
+  return $requirements;
+}
+
+function add_custom_fields() {
+  $fields = get_custom_fields();
+
+  foreach ($fields as $name => $data) {
+    field_create_field($data['field']);
+
+    $instance = $data['instance'];
+    $instance['entity_type'] = 'node';
+
+    if (is_array($instance['bundle'])) {
+      $bundles = $instance['bundle'];
+      foreach ($bundles as $bundle) {
+        $instance['bundle'] = $bundle;
+        field_create_instance($instance);
+      }
+    }
+    else {
+      field_create_instance($instance);
+    }
+  }
+}
+
+function delete_custom_fields() {
+  $fields = get_custom_fields();
+  foreach ($fields as $name => $data) {
+    field_delete_field($name);
+  }
+
+  foreach (array(ALBUM_NODE_TYPE, PHOTO_NODE_TYPE) as $type) {
+    $instances = field_info_instances('node', $type);
+    foreach ($instances as $instance_name => $instance) {
+      field_delete_instance($instance);
+    }
+  }
+}
+
+const FIELD_PREFIX = 'flickr_albums_';
+
+function get_custom_fields() {
+  $t = get_t();
+
+  return array(
+    // Album fields
+    FIELD_PREFIX . 'album_nid' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'album_nid',
+        'label' => $t('Album Node ID'),
+        'type' => 'number_integer',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'album_nid',
+        'bundle' => ALBUM_NODE_TYPE,
+      ),
+    ),
+
+    FIELD_PREFIX . 'primary_photo' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'primary_photo',
+        'label' => $t('The photo NID of this album\'s primary photo'),
+        'type' => 'number_integer',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'primary_photo',
+        'bundle' => ALBUM_NODE_TYPE,
+      ),
+    ),
+
+    FIELD_PREFIX . 'photo_count' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'photo_count',
+        'label' => $t('The number of photos in this album'),
+        'type' => 'number_integer',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'photo_count',
+        'bundle' => ALBUM_NODE_TYPE,
+      ),
+    ),
+
+    FIELD_PREFIX . 'video_count' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'video_count',
+        'label' => $t('The number of videos in this album'),
+        'type' => 'number_integer',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'video_count',
+        'bundle' => ALBUM_NODE_TYPE,
+      ),
+    ),
+
+    FIELD_PREFIX . 'date_create' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'date_create',
+        'label' => $t('The date that this album was created'),
+        'type' => 'number_integer',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'date_create',
+        'bundle' => ALBUM_NODE_TYPE,
+      ),
+    ),
+
+    FIELD_PREFIX . 'weight' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'weight',
+        'label' => $t('Denotes the ordering of albums. Nodes with a lower weight will float to the top.'),
+        'type' => 'number_integer',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'weight',
+        'bundle' => ALBUM_NODE_TYPE,
+      ),
+    ),
+
+    // Photo fields
+    FIELD_PREFIX . 'photo_id' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'photo_id',
+        'label' => $t('Flickr ID of the photo'),
+        'type' => 'text',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'photo_id',
+        'bundle' => PHOTO_NODE_TYPE,
+      ),
+    ),
+
+    FIELD_PREFIX . 'visibility_public' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'visibility_public',
+        'label' => $t('If this photo is publicly visible'),
+        'type' => 'list_boolean',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'visibility_public',
+        'bundle' => PHOTO_NODE_TYPE,
+      ),
+    ),
+
+    FIELD_PREFIX . 'visibility_friends' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'visibility_friends',
+        'label' => $t('If this photo is visible for friends'),
+        'type' => 'list_boolean',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'visibility_friends',
+        'bundle' => PHOTO_NODE_TYPE,
+      ),
+    ),
+
+    FIELD_PREFIX . 'visibility_family' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'visibility_family',
+        'label' => $t('If this photo is visible for family'),
+        'type' => 'list_boolean',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'visibility_family',
+        'bundle' => PHOTO_NODE_TYPE,
+      ),
+    ),
+
+    FIELD_PREFIX . 'date_taken' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'date_taken',
+        'label' => $t('The date that this photo was taken'),
+        'type' => 'text',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'date_taken',
+        'bundle' => PHOTO_NODE_TYPE,
+      ),
+    ),
+
+    // Mixed fields
+    FIELD_PREFIX . 'secret' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'secret',
+        'label' => $t('Flickr Secret identifier'),
+        'type' => 'text',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'secret',
+        'bundle' => array(ALBUM_NODE_TYPE, PHOTO_NODE_TYPE),
+      ),
+    ),
+
+    FIELD_PREFIX . 'server' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'server',
+        'label' => $t('Flickr server identifier this object is hosted on'),
+        'type' => 'text',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'server',
+        'bundle' => array(ALBUM_NODE_TYPE, PHOTO_NODE_TYPE),
+      ),
+    ),
+
+    FIELD_PREFIX . 'farm' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'farm',
+        'label' => $t('Flickr farm the server this object is hosted on is located'),
+        'type' => 'text',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'farm',
+        'bundle' => array(ALBUM_NODE_TYPE, PHOTO_NODE_TYPE),
+      ),
+    ),
+
+    FIELD_PREFIX . 'date_updated' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'date_updated',
+        'label' => $t('The date when this object was last updated on Flickr'),
+        'type' => 'number_integer',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'date_updated',
+        'bundle' => array(ALBUM_NODE_TYPE, PHOTO_NODE_TYPE),
+      ),
+    ),
+  );
+}

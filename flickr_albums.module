@@ -1,0 +1,115 @@
+<?php
+
+const PHOTO_NODE_TYPE = 'flickr_albums_photo';
+const ALBUM_NODE_TYPE = 'flickr_albums_album';
+
+function flickr_albums_permission() {
+  return array(
+    'view public albums' => array(
+      'title' => t('View public albums'),
+      'description' => t(''),
+    ),
+   'view friend albums' => array(
+      'title' => t('View friend-restricted albums'),
+      'description' => t(''),
+    ),
+    'view family albums' => array(
+      'title' => t('View friend-restricted albums'),
+      'description' => t(''),
+    ),
+    'upload photos' => array(
+      'title' => t('Upload photos'),
+      'description' => t(''),
+    ),
+    'administer flickr_albums' => array(
+      'title' => t('Administer Flickr_Albums'),
+      'description' => t(''),
+    ),
+  );
+}
+
+function flickr_albums_menu() {
+  $items = array();
+
+  $items['admin/config/media/flickr_albums'] = array(
+    'title' => 'Flickr Albums settings',
+    'description' => t('Configure the Flickr Albums module'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('flickr_albums_settings_form'),
+    'access arguments' => array('administer flickr_albums'),
+    'file' => 'includes/flickr_albums.admin.inc',
+    'file path' => drupal_get_path('module', 'flickr_albums'),
+  );
+
+  $path = variable_get('flickr_albums_path', 'flickr-photos');
+
+  $items[$path] = array(
+    'title' => variable_get('flickr_albums_title', 'Photos'),
+    'page callback' => 'flickr_albums_list',
+    'access arguments' => array('view public albums'),
+    'type' => MENU_NORMAL_ITEM,
+    'weight' => -100,
+    'file' => 'includes/flickr_albums.pages.inc',
+    'file path' => drupal_get_path('module', 'flickr_albums'),
+  );
+
+  $items[$path . '/%'] = array(
+    'title' => variable_get('flickr_albums_title', 'Photos'),
+    'page callback' => 'flickr_albums_album',
+    'page arguments' => array(
+      1,
+    ),
+    'access arguments' => array('view public albums'),
+    'type' => MENU_NORMAL_ITEM,
+    'weight' => -100,
+    'file' => 'includes/flickr_albums.pages.inc',
+    'file path' => drupal_get_path('module', 'flickr_albums'),
+  );
+   
+  return $items;
+}
+
+function flickr_albums_theme() {
+  $template_path = drupal_get_path('module', 'flickr_albums') . '/templates';
+
+  return array(
+    'flickr_albums_list' => array(
+      'template' => 'list',
+      'path' => $template_path,
+      'variables' => array(
+        'albums' => NULL,
+      ),
+    ),
+    'flickr_albums_album' => array(
+      'template' => 'album',
+      'path' => $template_path,
+      'variables' => array(
+        'photos' => NULL,
+      ),
+    ),
+  );
+}
+
+function flickr_albums_node_info() {
+  return array(
+    PHOTO_NODE_TYPE => array(
+      'name' => t('Flickr photo'),
+      'base' => PHOTO_NODE_TYPE,
+      'description' => t('A photo from Flickr'),
+      'has_title' => true,
+      'title_label' => t('Photo title'),
+    ),
+    ALBUM_NODE_TYPE => array(
+      'name' => t('Flickr album'),
+      'base' => ALBUM_NODE_TYPE,
+      'description' => t('An album containing photos from Flickr'),
+      'has_title' => true,
+      'title_label' => t('Album title'),
+    ),
+  );
+}
+
+function flickr_albums_cron() {
+  module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.cron');
+  flickr_albums_process_batch(variable_get('flickr_albums_batch_size'));
+}

@@ -1,0 +1,9 @@
+name = Flickr Albums
+description = "Create a gallery page using your photos from Flickr"
+core = 7.x
+package = Media
+dependencies[] = flickrapi
+configure = admin/config/media/flickr_albums
+
+files[] = flickr_albums.install
+files[] = flickr_albums.module
