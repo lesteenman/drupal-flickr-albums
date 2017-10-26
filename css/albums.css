@@ -1,0 +1,38 @@
+.flickr-albums-albums {
+  display: flex;
+  justify-content: center;
+  flex-flow: row wrap;
+  align-content: stretch;
+}
+
+.flickr-albums-album {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  margin: 20px;
+  background-position: 50% 50%;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.flickr-albums-overlay {
+  text-align: left;
+  display: block;
+  height: 100%;
+  background: linear-gradient(0deg, rgba(0,0,0,.9) 0, transparent 50%, transparent);
+  color: white;
+}
+
+.flickr-albums-overlay:hover {
+  color: rgb(185, 185, 185);
+}
+
+.flickr-albums-album-title {
+  position: absolute;
+  bottom: 15px;
+  margin: 0 15px;
+  text-shadow: 0 1px 1px #000;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 20px;
+}

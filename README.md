@@ -14,6 +14,9 @@ A browser for a user's Flickr album in Drupal. Allows comments on photos or albu
 A short list of all individual features. Here's a start:
 - View a list of a user's albums
 
+# Compatibility
+This module currently uses the CSS3 flexbox standard, which might not be available in older browsers.
+
 # Other Flickr modules
 There are a number of other Flickr modules for Drupal. However, it seems that most lacked support for video, different permissions based on the original media permissions, or commenting. I haven't seen any modules that combine all of these in the way this module does.
 

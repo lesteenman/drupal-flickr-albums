@@ -8,11 +8,10 @@
  */
 ?>
 
-List of albums
-
-<?php
-foreach ($albums as $album) {
-  $view = node_view($album, 'teaser');
-  print drupal_render($view);
-}
-?>
+<div class='flickr-albums-albums'>
+  <?php
+  foreach ($albums as $album) {
+    print $album;
+  }
+  ?>
+</div>

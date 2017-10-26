@@ -62,9 +62,9 @@ function flickr_albums_settings_form() {
 
   $form['flickr_albums_get_batch_button'] = array(
     '#type' => 'submit',
-    '#value' => t('Update all albums immediately'),
+    '#value' => t('Update 500 photos immediately'),
     '#description' => t('Update all albums immediately. This might take a long time if you have a lot of albums and/or photos in your Flickr account.'),
-    '#submit' => array('flickr_albums_update_all'),
+    '#submit' => array('flickr_albums_update_batch'),
   );
 
   // TODO: Add:
@@ -77,9 +77,9 @@ function flickr_albums_settings_form() {
   return system_settings_form($form);
 }
 
-function flickr_albums_update_all() {
+function flickr_albums_update_batch() {
   module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.cron');
-  flickr_albums_process_batch(-1);
+  flickr_albums_process_batch(500);
 }
 
 function flickr_albums_settings_form_validate($form, &$form_state) {

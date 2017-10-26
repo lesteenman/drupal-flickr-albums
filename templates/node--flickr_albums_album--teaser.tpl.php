@@ -81,6 +81,10 @@
  */
 ?>
 
-<a href="<?=url('node/' . $node->nid)?>">
-  <img src="<?=$primary['large_square']?>"></img>
-</a>
+<div class='flickr-albums-album' style='background-image: url(<?=$primary['large_square']?>)'>
+  <a class='flickr-albums-overlay' href="<?=url('node/' . $node->nid)?>">
+    <div class='flickr-albums-album-title'>
+      <?=$node->title?>
+    </div>
+  </a>
+</div>

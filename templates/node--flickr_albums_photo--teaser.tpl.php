@@ -81,7 +81,7 @@
  */
 ?>
 
-<a href="<?=url('node/', $node->id)?>">
+<a href="<?=url('node/' . $node->nid)?>">
   <img src="<?=$urls['large_square'] ?>">
 </a>
 </img>

@@ -81,10 +81,9 @@
  */
 ?>
 
-<div>
-Individual photo. Should provide both a full and a teaser template. This is the <?= $teaser ? 'teaser' : 'full' ?>.
-</div>
+<img
+  src="<?=$urls['large'] ?>"
+  class="flickr-albums-photo"
+></img>
 
-<img src="<?=$urls['large'] ?>"></img>
-<?php dpm(['urls' => $urls]); ?>
-<?php /*print render($content['comments']);*/ ?>
+<?php print render($content['comments']); ?>

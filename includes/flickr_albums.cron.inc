@@ -127,11 +127,7 @@ function flickr_albums_process_batch($count) {
       // As we still want to make sure we have the weight of all albums correct, we continue for
       // just the albums.
       if ($photosDone++ === $count) break;
-
-      break; // TODO: Tempo
     }
-
-    break; // TODO: Tempo
   }
 
   watchdog('flickr_albums', "cron run processed $photosDone photos and $albumsDone (all) albums for user $userId.");

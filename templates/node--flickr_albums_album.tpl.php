@@ -81,10 +81,6 @@
  */
 ?>
 
-<div>
-Individual album. Should provide both a full and a teaser template. Uses photo teasers in its full version.
-</div>
-
 <?php dpm(['photos' => $photos]); ?>
 
 <?php
