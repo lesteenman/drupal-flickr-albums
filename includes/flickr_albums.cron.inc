@@ -46,83 +46,92 @@ function flickr_albums_process_batch($count) {
 
     if ($album_node) {
       // Album exists, test if it has changed
-      watchdog('flickr_albums', 'Already found an album node; Last update was ' . $album_node->field_flickr_albums_date_update . ', web album update is ' . $album['date_update']);
-      if ($album_node->field_flickr_albums_date_update >= $album['date_update']) continue;
+      $album_wrapper = entity_metadata_wrapper('node', $album_node);
+      if ($album_wrapper->flickr_albums_date_update->value() >= $album['date_update']) {
+        watchdog('flickr_albums', 'Skipping album ' . $album['id'] . ', since there are no updates');
+        continue;
+      }
     }
     else {
       // Create a new basic album
-      /* $album_node = entity_create('node', array( */
-      /*   'type' => ALBUM_NODE_TYPE, */
-      /* )); */
+      $album_node = entity_create('node', array(
+        'type' => ALBUM_NODE_TYPE,
+      ));
+      $album_wrapper = entity_metadata_wrapper('node', $album_node);
 
-      $album_node = new stdClass();
-      $album_node->type = ALBUM_NODE_TYPE;
-      node_object_prepare($album_node);
+      /* $album_node = new stdClass(); */
+      /* $album_node->type = ALBUM_NODE_TYPE; */
+      /* node_object_prepare($album_node); */
     }
 
     $albumsDone++;
 
     $album_info = $flickr->photosets_getInfo($album['id']);
 
-    /* $node_wrapper = entity_metadata_wrapper('node', $album_node); */
-    /* $node_wrapper->title->set($album_info['title']['_content']); */
-    /* $node_wrapper->field_flickr_albums_flickr_id->set($album['id']); */
-    /* $node_wrapper->field_flickr_albums_secret->set($album['secret']); */
-    /* $node_wrapper->field_flickr_albums_primary_photo->set($album['primary']); */
-    /* $node_wrapper->field_flickr_albums_server->set($album['server']); */
-    /* $node_wrapper->field_flickr_albums_farm->set($album['farm']); */
-    /* $node_wrapper->field_flickr_albums_count_photos->set($album['photos']); */
-    /* $node_wrapper->field_flickr_albums_count_videos->set($album['videos']); */
-    /* $node_wrapper->field_flickr_albums_date_update->set($album['date_update']); */
-    /* $node_wrapper->save(); */
-
     // Make sure we're up to date on all changes to the album.
-    $album_node->title = $album_info['title']['_content'];
-    $album_node->field_flickr_albums_flickr_id = $album['id'];
-    $album_node->field_flickr_albums_secret = $album['secret'];
-    $album_node->field_flickr_albums_primary_photo = $album['primary'];
-    $album_node->field_flickr_albums_server = $album['server'];
-    $album_node->field_flickr_albums_farm = $album['farm'];
-    $album_node->field_flickr_albums_count_photos = $album['photos'];
-    $album_node->field_flickr_albums_count_videos = $album['videos'];
-    $album_node->field_flickr_albums_date_update = $album['date_update'];
-    $album_node = node_submit($album_node);
-    node_save($album_node);
+    $album_wrapper->title->set($album_info['title']['_content']);
+    $album_wrapper->flickr_albums_description->set($album_info['description']['_content']);
+    $album_wrapper->flickr_albums_flickr_id->set($album['id']);
+    $album_wrapper->flickr_albums_secret->set($album['secret']);
+    $album_wrapper->flickr_albums_primary_photo->set($album['primary']);
+    $album_wrapper->flickr_albums_server->set($album['server']);
+    $album_wrapper->flickr_albums_farm->set($album['farm']);
+    $album_wrapper->flickr_albums_count_photos->set($album['photos']);
+    $album_wrapper->flickr_albums_count_videos->set($album['videos']);
+    $album_wrapper->flickr_albums_date_update->set($album['date_update']);
+    $album_wrapper->flickr_albums_date_create->set($album['date_create']);
+    $album_wrapper->flickr_albums_weight->set($albumsDone);
+    $album_wrapper->save();
 
     // Add photos (if we're not yet past the set batchsize)
     $photos = $flickr->photosets_getPhotos($album['id'])['photoset']['photo'];
     watchdog('flickr_albums', 'Also found ' . count($photos) . ' photos');
-    /* foreach ($photos as $photo) { */
-    /*   if ($photosDone === $count) break; */
 
-    /*   $photo_node = flickr_albums_api_get_photo($album['id'], $photo['id']); */
-    /*   if ($photo_node) { */
-    /*     if (!$photo_node->field_flickr_albums_date_update >= $photo['date_update']) continue; */
-    /*   } */
-    /*   else { */
-    /*     // Create a new basic photo */
-    /*     $photo_node = new stdClass(); */
-    /*     $photo_node->type = PHOTO_NODE_TYPE; */
-    /*     node_object_prepare($photo_node); */
-    /*   } */
+    $photoWeight = 0;
+    foreach ($photos as $photo) {
+      if ($photosDone === $count) break;
 
-    /*   $photo_node->title = $photo['title']; */
-    /*   $photo_node->field_flickr_albums_flickr_id = $photo['id']; */
-    /*   $photo_node->field_flickr_albums_secret = $photo['secret']; */
-    /*   $photo_node->field_flickr_albums_server = $photo['server']; */
-    /*   $photo_node->field_flickr_albums_farm = $photo['farm']; */
-    /*   $photo_node->field_flickr_albums_visibility_public = $photo['ispublic'] ? 1 : 0; */
-    /*   $photo_node->field_flickr_albums_visibility_friends = $photo['isfriend'] ? 1 : 0; */
-    /*   $photo_node->field_flickr_albums_visibility_family = $photo['isfamily'] ? 1 : 0; */
-    /*   $photo_node->field_flickr_albums_date_update = $photo['date_update']; */
-    /*   node_save($photo_node); */
+      $photo_node = flickr_albums_api_get_photo($album['id'], $photo['id']);
+      if ($photo_node) {
+        $photo_wrapper = entity_metadata_wrapper('node', $photo_node);
+        if (!$photo_wrapper->flickr_albums_date_update->value() >= $photo['date_update']) continue;
+      }
+      else {
+        // Create a new basic photo
+        $photo_node = entity_create('node', array(
+          'type' => PHOTO_NODE_TYPE,
+        ));
+        $photo_wrapper = entity_metadata_wrapper('node', $photo_node);
+      }
 
-    /*   // As we still want to make sure we have the weight of all albums correct, we continue for */
-    /*   // just the albums. */
-    /*   if ($photosDone++ === $count) break; */
-    /* } */
+      $photo_info = $flickr->photos_getInfo($photo['id'])['photo'];
 
-    break;
+      $photo_wrapper->title->set($photo['title']);
+      $photo_wrapper->flickr_albums_flickr_id->set($photo['id']);
+      $photo_wrapper->flickr_albums_secret->set($photo['secret']);
+      $photo_wrapper->flickr_albums_original_secret->set($photo_info['originalsecret']);
+      $photo_wrapper->flickr_albums_server->set($photo['server']);
+      $photo_wrapper->flickr_albums_farm->set($photo['farm']);
+      $photo_wrapper->flickr_albums_original_format->set($photo_info['originalformat']);
+      $photo_wrapper->flickr_albums_media->set($photo_info['media']);
+      $photo_wrapper->flickr_albums_album_id->set($album['id']);
+      $photo_wrapper->flickr_albums_visibility_public->set($photo['ispublic'] ? 1 : 0);
+      $photo_wrapper->flickr_albums_visibility_friends->set($photo['isfriend'] ? 1 : 0);
+      $photo_wrapper->flickr_albums_visibility_family->set($photo['isfamily'] ? 1 : 0);
+      $photo_wrapper->flickr_albums_date_update->set($photo_info['dates']['lastupdate']);
+      $photo_wrapper->flickr_albums_date_taken->set($photo_info['dates']['lastupdate']);
+      $photo_wrapper->flickr_albums_date_upload->set($photo_info['dates']['lastupdate']);
+      $photo_wrapper->flickr_albums_weight->set($photoWeight++);
+      $photo_wrapper->save();
+
+      // As we still want to make sure we have the weight of all albums correct, we continue for
+      // just the albums.
+      if ($photosDone++ === $count) break;
+
+      break; // TODO: Tempo
+    }
+
+    break; // TODO: Tempo
   }
 
   watchdog('flickr_albums', "cron run processed $photosDone photos and $albumsDone (all) albums for user $userId.");

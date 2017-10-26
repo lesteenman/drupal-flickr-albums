@@ -41,6 +41,15 @@ function flickr_albums_menu() {
     'file path' => drupal_get_path('module', 'flickr_albums'),
   );
 
+  $items['flickr_albums/lightbox_stream/%'] = array(
+    'page callback' => 'flickr_albums_lightbox_stream',
+    'page arguments' => array(
+      1,
+    ),
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('view public albums'),
+  );
+
   $path = variable_get('flickr_albums_path', 'flickr-photos');
 
   $items[$path] = array(
@@ -53,18 +62,18 @@ function flickr_albums_menu() {
     'file path' => drupal_get_path('module', 'flickr_albums'),
   );
 
-  $items[$path . '/%'] = array(
-    'title' => variable_get('flickr_albums_title', 'Photos'),
-    'page callback' => 'flickr_albums_album',
-    'page arguments' => array(
-      1,
-    ),
-    'access arguments' => array('view public albums'),
-    'type' => MENU_NORMAL_ITEM,
-    'weight' => -100,
-    'file' => 'includes/flickr_albums.pages.inc',
-    'file path' => drupal_get_path('module', 'flickr_albums'),
-  );
+  /* $items[$path . '/%'] = array( */
+  /*   'title' => variable_get('flickr_albums_title', 'Photos'), */
+  /*   'page callback' => 'flickr_albums_album', */
+  /*   'page arguments' => array( */
+  /*     1, */
+  /*   ), */
+  /*   'access arguments' => array('view public albums'), */
+  /*   'type' => MENU_NORMAL_ITEM, */
+  /*   'weight' => -100, */
+  /*   'file' => 'includes/flickr_albums.pages.inc', */
+  /*   'file path' => drupal_get_path('module', 'flickr_albums'), */
+  /* ); */
    
   return $items;
 }
@@ -80,14 +89,59 @@ function flickr_albums_theme() {
         'albums' => NULL,
       ),
     ),
-    'flickr_albums_album' => array(
-      'template' => 'album',
-      'path' => $template_path,
+
+    'node__flickr_albums_album' => array(
       'variables' => array(
+        'album' => NULL,
         'photos' => NULL,
       ),
+      'template' => 'node--flickr_albums_album',
+      'path' => $template_path,
+    ),
+
+    'node__flickr_albums_album__teaser' => array(
+      'variables' => array(
+        'album' => NULL,
+        'photos' => NULL,
+      ),
+      'template' => 'node--flickr_albums_album--teaser',
+      'path' => $template_path,
+    ),
+
+    'node__flickr_albums_photo' => array(
+      'variables' => array(
+        'photo' => NULL,
+      ),
+      'template' => 'node--flickr_albums_photo',
+      'path' => $template_path,
+    ),
+
+    'node__flickr_albums_photo__teaser' => array(
+      'variables' => array(
+        'photo' => NULL,
+      ),
+      'template' => 'node--flickr_albums_photo--teaser',
+      'path' => $template_path,
     ),
   );
+}
+
+function flickr_albums_preprocess_node(&$variables, $hook) {
+  $node = $variables['node'];
+  if (in_array($node->type, [PHOTO_NODE_TYPE, ALBUM_NODE_TYPE])) {
+    module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.pages');
+    switch ($node->type) {
+      case PHOTO_NODE_TYPE:
+        flickr_albums_preprocess_photo($variables, $hook);
+        break;
+      case ALBUM_NODE_TYPE:
+        if ($variables['view_mode'] === 'teaser')
+          flickr_albums_preprocess_album_teaser($variables, $hook);
+        else
+          flickr_albums_preprocess_album($variables, $hook);
+        break;
+    }
+  }
 }
 
 function flickr_albums_node_info() {
@@ -112,4 +166,10 @@ function flickr_albums_node_info() {
 function flickr_albums_cron() {
   module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.cron');
   flickr_albums_process_batch(variable_get('flickr_albums_batch_size'));
+}
+
+function flickr_albums_lightbox_stream($album) {
+  module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.api');
+  $photos = flickr_albums_api_lightbox_stream($album);
+  drupal_json_output(array('status' => 0, 'data' => $photos));
 }

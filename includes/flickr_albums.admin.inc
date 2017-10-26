@@ -7,7 +7,7 @@ function flickr_albums_settings_form() {
     '#type' => 'textfield',
     '#title' => t('User ID'),
     '#description' => t('The user ID or email of your Flickr account.') . ' ' . l(t('Don\'t know your user ID?'), 'http://idgettr.com'),
-    '#default_value' => variable_get('flickr_albums_userId', null),
+    '#default_value' => variable_get('flickr_albums_userId', '11467783@N05'), // TODO: Clearly remove this userID before deploying.
   );
 
   $form['flickr_albums_token'] = array(

@@ -100,7 +100,7 @@ function get_custom_fields() {
       'field' => array(
         'field_name' => FIELD_PREFIX . 'primary_photo',
         'label' => $t('The photo NID of this album\'s primary photo'),
-        'type' => 'number_integer',
+        'type' => 'text',
       ),
       'instance' => array(
         'field_name' => FIELD_PREFIX . 'primary_photo',
@@ -156,28 +156,16 @@ function get_custom_fields() {
       ),
     ),
 
-    FIELD_PREFIX . 'weight' => array(
-      'field' => array(
-        'field_name' => FIELD_PREFIX . 'weight',
-        'label' => $t('Denotes the ordering of albums. Nodes with a lower weight will float to the top.'),
-        'type' => 'number_integer',
-      ),
-      'instance' => array(
-        'field_name' => FIELD_PREFIX . 'weight',
-        'bundle' => ALBUM_NODE_TYPE,
-      ),
-    ),
-
     // Photo fields
     FIELD_PREFIX . 'album_id' => array(
       'field' => array(
         'field_name' => FIELD_PREFIX . 'album_id',
         'label' => $t('Flickr album ID this photo is in'),
-        'type' => 'number_integer',
+        'type' => 'text',
       ),
       'instance' => array(
         'field_name' => FIELD_PREFIX . 'album_id',
-        'bundle' => ALBUM_NODE_TYPE,
+        'bundle' => PHOTO_NODE_TYPE,
       ),
     ),
 
@@ -221,14 +209,68 @@ function get_custom_fields() {
       ),
     ),
 
+    FIELD_PREFIX . 'date_upload' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'date_upload',
+        'label' => $t('The date that this photo was uploaded'),
+        'type' => 'number_integer',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'date_upload',
+        'bundle' => PHOTO_NODE_TYPE,
+      ),
+    ),
+
     FIELD_PREFIX . 'date_taken' => array(
       'field' => array(
         'field_name' => FIELD_PREFIX . 'date_taken',
         'label' => $t('The date that this photo was taken'),
-        'type' => 'text',
+        'type' => 'number_integer',
       ),
       'instance' => array(
         'field_name' => FIELD_PREFIX . 'date_taken',
+        'bundle' => PHOTO_NODE_TYPE,
+      ),
+    ),
+
+    FIELD_PREFIX . 'original_secret' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'original_secret',
+        'label' => $t('The secret of the original photo'),
+        'type' => 'text',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'original_secret',
+        'bundle' => PHOTO_NODE_TYPE,
+      ),
+    ),
+
+    FIELD_PREFIX . 'original_format' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'original_format',
+        'label' => $t('The format of this photo'),
+        'type' => 'text',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'original_format',
+        'bundle' => PHOTO_NODE_TYPE,
+      ),
+    ),
+
+    FIELD_PREFIX . 'media' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'media',
+        'label' => $t('The type of media'),
+        'type' => 'list_text',
+        'options' => array(
+          'allowed_values' => array(
+            'photo',
+            'video',
+          ),
+        ),
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'media',
         'bundle' => PHOTO_NODE_TYPE,
       ),
     ),
@@ -238,7 +280,7 @@ function get_custom_fields() {
       'field' => array(
         'field_name' => FIELD_PREFIX . 'flickr_id',
         'label' => $t('Flickr ID of the object'),
-        'type' => 'number_integer',
+        'type' => 'text',
       ),
       'instance' => array(
         'field_name' => FIELD_PREFIX . 'flickr_id',
@@ -290,6 +332,18 @@ function get_custom_fields() {
       ),
       'instance' => array(
         'field_name' => FIELD_PREFIX . 'date_update',
+        'bundle' => array(ALBUM_NODE_TYPE, PHOTO_NODE_TYPE),
+      ),
+    ),
+
+    FIELD_PREFIX . 'weight' => array(
+      'field' => array(
+        'field_name' => FIELD_PREFIX . 'weight',
+        'label' => $t('Denotes the ordering of albums. Nodes with a lower weight will float to the top.'),
+        'type' => 'number_integer',
+      ),
+      'instance' => array(
+        'field_name' => FIELD_PREFIX . 'weight',
         'bundle' => array(ALBUM_NODE_TYPE, PHOTO_NODE_TYPE),
       ),
     ),
