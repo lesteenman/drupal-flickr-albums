@@ -6,9 +6,11 @@ module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.api');
 /**
  * Updates $count photos. -1 means it will update all photos.
  */
-function flickr_albums_process_batch($count) {
+function flickr_albums_process_batch($batch_size) {
   $flickr = flickrapi_phpFlickr();
   $token = variable_get('flickr_albums_token', null);
+
+  // TODO: Check if we have the correct permissions (read?)
 
   $userId = variable_get('flickr_albums_userId', null);
   if (!$userId) {
@@ -36,19 +38,60 @@ function flickr_albums_process_batch($count) {
 
   watchdog('flickr_albums', 'cron importing ' . count($albums) . ' albums');
 
+  $photos_total = 0; // Total photos found
+  $videos_total = 0; // Total photos found
+  $albums_total = 0; // Total albums found
+
+  $photos_synced = 0; // Photos synced total, including previous batches
+  $videos_synced = 0; // Photos synced total, including previous batches
+  $albums_synced = 0;
+
+  $media_done = 0; // All photos/videos that have been processed this batch
+  $videos_done = 0; // Videos that have been processed this batch
+  $photos_done = 0; // Photos that have been processed this batch
+  $albums_done = 0; // Albums that have been updated this batch
+
   // Update all albums
-  $photosDone = 0;
-  $albumsDone = 0;
   foreach ($albums as $album) {
+    $albums_total++;
     $album_node = flickr_albums_api_get_album($album['id']);
 
-    watchdog('flickr_albums', 'found album for ' . $album['id'] . ': ' . json_encode($album_node));
+    // Queries used to see the amount of photos/videos we already have for this album
+    $videos_synced_query = new EntityFieldQuery();
+    $videos_synced_query->entityCondition('entity_type', 'node')
+      ->entityCondition('bundle', PHOTO_NODE_TYPE)
+      ->fieldCondition('flickr_albums_album_id', 'value', $album['id']);
+    $videos_synced_query->fieldCondition('flickr_albums_media', 'value', 'video');
+    $album_videos_synced = $videos_synced_query->count()->execute();
+
+    $photos_synced_query = new EntityFieldQuery();
+    $photos_synced_query->entityCondition('entity_type', 'node')
+      ->entityCondition('bundle', PHOTO_NODE_TYPE)
+      ->fieldCondition('flickr_albums_album_id', 'value', $album['id']);
+    $photos_synced_query->fieldCondition('flickr_albums_media', 'value', 'photo');
+    $album_photos_synced = $photos_synced_query->count()->execute();
+
+    $videos_synced += $album_videos_synced;
+    $photos_synced += $album_photos_synced;
 
     if ($album_node) {
       // Album exists, test if it has changed
       $album_wrapper = entity_metadata_wrapper('node', $album_node);
-      if ($album_wrapper->flickr_albums_date_update->value() >= $album['date_update']) {
+
+      $album_photos_total = $album_wrapper->flickr_albums_count_photos->value();
+      $album_videos_total = $album_wrapper->flickr_albums_count_videos->value();
+      $photos_total += $album_photos_total;
+      $videos_total += $album_videos_total;
+
+      watchdog('flickr_albums', "Album {$album['id']} has $album_photos_synced/$album_photos_total photos and $album_videos_synced/$album_videos_total videos");
+
+      // TODO: Check if we've synced all photos/videos for this album yet!
+
+      if ($album_wrapper->flickr_albums_date_update->value() >= $album['date_update'] &&
+          $album_photos_synced === $album_photos_total &&
+          $album_videos_synced === $album_videos_total) {
         watchdog('flickr_albums', 'Skipping album ' . $album['id'] . ', since there are no updates');
+        $albums_synced++;
         continue;
       }
     }
@@ -58,13 +101,10 @@ function flickr_albums_process_batch($count) {
         'type' => ALBUM_NODE_TYPE,
       ));
       $album_wrapper = entity_metadata_wrapper('node', $album_node);
-
-      /* $album_node = new stdClass(); */
-      /* $album_node->type = ALBUM_NODE_TYPE; */
-      /* node_object_prepare($album_node); */
     }
 
-    $albumsDone++;
+    $albums_done++;
+    $albums_synced++;
 
     $album_info = $flickr->photosets_getInfo($album['id']);
 
@@ -80,24 +120,29 @@ function flickr_albums_process_batch($count) {
     $album_wrapper->flickr_albums_count_videos->set($album['videos']);
     $album_wrapper->flickr_albums_date_update->set($album['date_update']);
     $album_wrapper->flickr_albums_date_create->set($album['date_create']);
-    $album_wrapper->flickr_albums_weight->set($albumsDone);
+    $album_wrapper->flickr_albums_weight->set($albums_total); // TODO: Verify and fix if necessary!
     $album_wrapper->save();
 
-    // Add photos (if we're not yet past the set batchsize)
-    $photos = $flickr->photosets_getPhotos($album['id'])['photoset']['photo'];
-    watchdog('flickr_albums', 'Also found ' . count($photos) . ' photos');
+    // Now get photos for this album, if we're not yet over the limit
+    if ($media_done >= $batch_size - 1) continue;
+
+    $photos = $flickr->photosets_getPhotos($album['id'], 'last_update')['photoset']['photo'];
 
     $photoWeight = 0;
     foreach ($photos as $photo) {
-      if ($photosDone === $count) break;
-
       $photo_node = flickr_albums_api_get_photo($album['id'], $photo['id']);
+      $photoWeight++; // TODO: Verify and fix!
+
       if ($photo_node) {
+        // Already exist, check if it is still up-to-date
         $photo_wrapper = entity_metadata_wrapper('node', $photo_node);
-        if (!$photo_wrapper->flickr_albums_date_update->value() >= $photo['date_update']) continue;
-      }
-      else {
-        // Create a new basic photo
+        if ($photo['lastupdate'] <= $photo_wrapper->flickr_albums_date_update->value()) {
+          /* if ($photo_wrapper->flickr_albums_media->value() === 'video') $videos_synced++; */
+          /* else $photos_synced++; */
+          continue;
+        }
+      } else {
+        // Create a new photo
         $photo_node = entity_create('node', array(
           'type' => PHOTO_NODE_TYPE,
         ));
@@ -105,6 +150,8 @@ function flickr_albums_process_batch($count) {
       }
 
       $photo_info = $flickr->photos_getInfo($photo['id'])['photo'];
+
+      // dpm(['photo' => $photo, 'node' => $photo_node, 'info' => $photo_info]);
 
       $photo_wrapper->title->set($photo['title']);
       $photo_wrapper->flickr_albums_flickr_id->set($photo['id']);
@@ -119,30 +166,33 @@ function flickr_albums_process_batch($count) {
       $photo_wrapper->flickr_albums_visibility_friends->set($photo['isfriend'] ? 1 : 0);
       $photo_wrapper->flickr_albums_visibility_family->set($photo['isfamily'] ? 1 : 0);
       $photo_wrapper->flickr_albums_date_update->set($photo_info['dates']['lastupdate']);
-      $photo_wrapper->flickr_albums_date_taken->set($photo_info['dates']['lastupdate']);
-      $photo_wrapper->flickr_albums_date_upload->set($photo_info['dates']['lastupdate']);
-      $photo_wrapper->flickr_albums_weight->set($photoWeight++);
+      $photo_wrapper->flickr_albums_date_taken->set(strtotime($photo_info['dates']['taken']));
+      $photo_wrapper->flickr_albums_date_upload->set($photo_info['dateuploaded']);
+      $photo_wrapper->flickr_albums_weight->set($photoWeight);
       $photo_wrapper->save();
 
-      // As we still want to make sure we have the weight of all albums correct, we continue for
-      // just the albums.
-      if ($photosDone++ === $count) break;
+      if ($photo_wrapper->flickr_albums_media->value() === 'video') {
+        $videos_done++;
+        $videos_synced++;
+      }
+      else {
+        $photos_done++;
+        $photos_synced++;
+      }
+
+      if ($media_done++ >= $batch_size - 1) break;
     }
   }
 
-  watchdog('flickr_albums', "cron run processed $photosDone photos and $albumsDone (all) albums for user $userId.");
-  drupal_set_message("processed $photosDone photos and $albumsDone (all) albums");
+  watchdog('flickr_albums', "cron run processed $photos_done photos and $albums_done/$albums_total albums for user $userId.");
+  drupal_set_message("processed $photos_done/$photos_total photos and $videos_done/$videos_total videos. Information about $albums_done/$albums_total albums has also been synchronized. Total synchronized: $albums_synced/$albums_total albums, $photos_synced/$photos_total photos and $videos_synced/$videos_total videos.");
 
-  // Check if we have the correct permissions (read?)
+  variable_set('flickr_albums_albums_total', $albums_total);
+  variable_set('flickr_albums_photos_total', $photos_total);
+  variable_set('flickr_albums_videos_total', $videos_total);
+  variable_set('flickr_albums_albums_synced', $albums_synced);
+  variable_set('flickr_albums_photos_synced', $photos_synced);
+  variable_set('flickr_albums_videos_synced', $videos_synced);
 
-  // At any point, once we reach $count photos: return. The next iteration will automatically continue.
-  // Get all photosets
-  // For all new photosets:
-  // - Create photoset
-  // - Import up to $count photos, in batches of 500 (Flickr max)
-  // For all existing photosets:
-  // - Check if the 'updated' date is later than our last node update
-  //
-  // For all photos we import:
-  // - Save all relevant fields
+  variable_set('flickr_albums_last_sync', time());
 }

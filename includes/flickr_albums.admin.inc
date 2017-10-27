@@ -3,6 +3,8 @@
 function flickr_albums_settings_form() {
   $form = array();
 
+  // TODO: Check if we have the correct permissions (read?), and give an error otherwise!
+
   $form['flickr_albums_userId'] = array(
     '#type' => 'textfield',
     '#title' => t('User ID'),
@@ -25,6 +27,8 @@ function flickr_albums_settings_form() {
     ),
   );
 
+  // TODO: Auth is broken: https://github.com/dan-coulter/phpflickr/issues/53
+
   $form['flickr_albums_batch_size'] = array(
     '#type' => 'textfield',
     '#title' => t('Cron batch size'),
@@ -42,22 +46,15 @@ function flickr_albums_settings_form() {
   $form['flickr_albums_path'] = array(
     '#type' => 'textfield',
     '#title' => t('Path for this module\'s page'),
-    '#description' => t('Set the path for this module\'s page, where all albums can be found. Defaults to /photos'),
+    '#description' => t('Set the path for this module\'s page, where all albums can be found. Defaults to /photos. Leave empty if you do not want to use this page, but create your own view with Flickr Albums instead.'),
     '#default_value' => variable_get('flickr_albums_path', 'flickr-photos'),
   );
 
-  $form['flickr_albums_block_newest_count'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Albums in \'newest albums\' block'),
-    '#description' => t('The amount of albums to show in the \'newest albums\' block'),
-    '#default_value' => variable_get('flickr_albums_block_newest_count', 3),
-  );
+  // TODO: Add an option to select the ordering of albums on the default page.
+  // TODO: Add an option to select the ordering of photos in an album.
 
-  $form['flickr_albums_block_top_count'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Albums in \'top albums\' block'),
-    '#description' => t('The amount of albums to show in the \'top albums\' block'),
-    '#default_value' => variable_get('flickr_albums_block_top_count', 3),
+  $form['flickr_albums_sync_status'] = array(
+    '#markup' => flickr_albums_sync_status(),
   );
 
   $form['flickr_albums_get_batch_button'] = array(
@@ -77,9 +74,37 @@ function flickr_albums_settings_form() {
   return system_settings_form($form);
 }
 
+function flickr_albums_sync_status() {
+  $albums_total = variable_get('flickr_albums_albums_total', 0);
+  $photos_total = variable_get('flickr_albums_photos_total', 0);
+  $videos_total = variable_get('flickr_albums_videos_total', 0);
+  $albums_synced = variable_get('flickr_albums_photos_synced', 0);
+  $photos_synced = variable_get('flickr_albums_photos_synced', 0);
+  $videos_synced = variable_get('flickr_albums_videos_synced', 0);
+
+  $last_update = variable_get('flickr_albums_last_sync', 'never');
+
+  // Format last update date
+  if ($last_update === 'never') {
+    $statusText = "No sync has happened yet.";
+  }
+  else {
+    $statusText = "Synced $photos_synced/$photos_total photos, $videos_synced/$videos_total videos and $albums_synced/$albums_total albums.";
+    $last_update = date('Y-m-d H:i:s', $last_update);
+  }
+
+  return <<<EOD
+<div style='border: 1px solid #ddd; margin-bottom: 15px; padding: 5px;'>
+  <h3>Status</h3>
+  $statusText<br>
+  Last updated: $last_update
+</div>
+EOD;
+}
+
 function flickr_albums_update_batch() {
   module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.cron');
-  flickr_albums_process_batch(500);
+  flickr_albums_process_batch(50);
 }
 
 function flickr_albums_settings_form_validate($form, &$form_state) {
@@ -94,16 +119,6 @@ function flickr_albums_settings_form_validate($form, &$form_state) {
   if (!intval($form_state['values']['flickr_albums_batch_size'])) {
     form_set_error('flickr_albums_batch_size', t('Not a valid batch size'));
   }
-
-  $newest_count = $form_state['values']['flickr_albums_block_newest_count'];
-  if (!intval($newest_count) || intval($newest_count) < 0) {
-    form_set_error('flickr_albums_block_newest_count', t('Not a valid count'));
-  }
-
-  $top_count = intval($form_state['values']['flickr_albums_block_top_count']);
-  if (!intval($top_count) || intval($top_count) < 0) {
-    form_set_error('flickr_albums_block_top_count', t('Not a valid count'));
-  }
 }
 
 function flickr_albums_settings_form_submit($form, &$form_state) {
@@ -111,7 +126,7 @@ function flickr_albums_settings_form_submit($form, &$form_state) {
   if ($form_state['values']['flickr_albums_path'] != $form['flickr_albums_path']['#default_value']) {
     variable_set('flickr_albums_path', $form_state['values']['flickr_albums_path']);
     if (menu_rebuild()) {
-      drupal_set_message(t('Menu has been rebuild'));
+      drupal_set_message(t('Menu has been rebuilt'));
     }
   }
 }

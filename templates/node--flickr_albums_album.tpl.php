@@ -81,13 +81,20 @@
  */
 ?>
 
-<?php dpm(['photos' => $photos]); ?>
+<div class='flickr-albums-album'>
+  <?php
+  foreach ($photos as $photo) {
+    $view = node_view($photo, 'teaser');
+    print drupal_render($view);
+  }
+  ?>
+</div>
 
-<?php
-foreach ($photos as $photo) {
-  $view = node_view($photo, 'teaser');
-  print drupal_render($view);
-}
-?>
+<div id='flickr-albums-lightbox-urls'>
+  <?php
+  foreach ($photos as $photo) {
+  }
+  ?>
+</div>
 
 <?php print render($content['comments']); ?>

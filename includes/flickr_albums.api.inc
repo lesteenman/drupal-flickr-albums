@@ -7,8 +7,6 @@ function flickr_albums_api_get_album($albumId) {
     ->fieldCondition('flickr_albums_flickr_id', 'value', $albumId);
   $result = $query->execute();
 
-  watchdog('flickr_albums', 'Result: ' . json_encode($result));
-
   if (!empty($result['node'])) {
     $node = $result['node'];
     return node_load(array_keys($node)[0]);
@@ -26,7 +24,7 @@ function flickr_albums_api_get_photo($albumId, $photoId) {
   $result = $query->execute();
 
   if (!empty($result['node']))
-    return entity_load('node', array_keys($result['node'])[0]);
+    return node_load(array_keys($result['node'])[0]);
 
   return null;
 }

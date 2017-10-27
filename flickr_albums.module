@@ -41,15 +41,6 @@ function flickr_albums_menu() {
     'file path' => drupal_get_path('module', 'flickr_albums'),
   );
 
-  $items['flickr_albums/lightbox_stream/%'] = array(
-    'page callback' => 'flickr_albums_lightbox_stream',
-    'page arguments' => array(
-      1,
-    ),
-    'type' => MENU_CALLBACK,
-    'access arguments' => array('view public albums'),
-  );
-
   $path = variable_get('flickr_albums_path', 'flickr-photos');
 
   $items[$path] = array(
@@ -166,10 +157,4 @@ function flickr_albums_node_info() {
 function flickr_albums_cron() {
   module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.cron');
   flickr_albums_process_batch(variable_get('flickr_albums_batch_size'));
-}
-
-function flickr_albums_lightbox_stream($album) {
-  module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.api');
-  $photos = flickr_albums_api_lightbox_stream($album);
-  drupal_json_output(array('status' => 0, 'data' => $photos));
 }

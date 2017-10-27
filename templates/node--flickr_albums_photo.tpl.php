@@ -83,7 +83,7 @@
 
 <img
   src="<?=$urls['large'] ?>"
-  class="flickr-albums-photo"
+  class="flickr-albums-photo-full"
 ></img>
 
 <?php print render($content['comments']); ?>

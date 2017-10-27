@@ -26,7 +26,7 @@ function flickr_albums_list() {
 
   /* dpm(['albums' => $albums, 'photos' => $photos, 'album info' => $album_info, 'photo info' => $photo_info]); */
 
-  drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/css/albums.css');
+  drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/style.css');
 
   $albums = array();
   $query = new EntityFieldQuery();
@@ -56,7 +56,7 @@ function flickr_albums_preprocess_photo(&$variables, $hook) {
   $photo_node = $variables['node'];
   $photo_wrapper = entity_metadata_wrapper('node', $photo_node);
 
-  drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/css/photo.css');
+  drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/style.css');
 
   $variables['urls'] = flickr_albums_photo_urls($photo_wrapper);
 }
@@ -65,7 +65,7 @@ function flickr_albums_preprocess_album_teaser(&$variables, $hook) {
   $album_node = $variables['node'];
   $album_wrapper = entity_metadata_wrapper('node', $album_node);
 
-  drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/css/photo.css');
+  drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/style.css');
 
   $primary = $album_wrapper->flickr_albums_primary_photo->value();
   $query = new EntityFieldQuery();
@@ -87,8 +87,7 @@ function flickr_albums_preprocess_album(&$variables, $hook) {
   $album_node = $variables['node'];
   $album_wrapper = entity_metadata_wrapper('node', $album_node);
 
-  // TODO: fix these permissions and add the lightbox script here
-  // drupal_add_js(drupal_get_path('module', 'flickr_albums'), '/js/lightbox.js');
+  drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/style.css');
 
   $photos = array();
   $query = new EntityFieldQuery();
@@ -107,19 +106,3 @@ function flickr_albums_preprocess_album(&$variables, $hook) {
 
   $variables['photos'] = $photos;
 }
-
-/* function flickr_albums_album($album_id) { */
-/*   $photos = array(); */
-
-/*   // TODO: Get photos from the database. Based on the unique albumIds of the photo IDs. */
-
-/*   $build = array( */
-/*     '#theme' => 'flickr_albums_album', */
-/*     '#description' => t('Flickr Album'), */
-/*     '#photos' => $photos, */
-/*   ); */
-
-/*   dpm(['photos' => $photos]); */
-
-/*   return drupal_render($build); */
-/* } */

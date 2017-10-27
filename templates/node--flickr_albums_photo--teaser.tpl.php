@@ -81,7 +81,8 @@
  */
 ?>
 
-<a href="<?=url('node/' . $node->nid)?>">
-  <img src="<?=$urls['large_square'] ?>">
-</a>
-</img>
+<div class='flickr-albums-photo-wrap'>
+  <a href="<?=url('node/' . $node->nid)?>">
+    <img src="<?=$urls['large_square'] ?>"></img>
+  </a>
+</div>

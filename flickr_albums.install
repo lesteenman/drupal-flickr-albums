@@ -13,6 +13,13 @@ function flickr_albums_uninstall() {
   variable_del('flickr_albums_token');
   variable_del('flickr_albums_batch_size');
   variable_del('flickr_albums_path');
+  variable_del('flickr_albums_albums_total');
+  variable_del('flickr_albums_photos_total');
+  variable_del('flickr_albums_videos_total');
+  variable_del('flickr_albums_photos_synced');
+  variable_del('flickr_albums_photos_synced');
+  variable_del('flickr_albums_videos_synced');
+  // TODO: Add other variables
 
   $sql = 'select nid from {node} n where n.type = :photo_type or n.type = :album_type';
   $result = db_query($sql, array(
@@ -76,17 +83,7 @@ function add_custom_fields() {
 }
 
 function delete_custom_fields() {
-  $fields = get_custom_fields();
-  foreach ($fields as $name => $data) {
-    field_delete_field($name);
-  }
-
-  foreach (array(ALBUM_NODE_TYPE, PHOTO_NODE_TYPE) as $type) {
-    $instances = field_info_instances('node', $type);
-    foreach ($instances as $instance_name => $instance) {
-      field_delete_instance($instance);
-    }
-  }
+  field_delete_field($name);
 }
 
 const FIELD_PREFIX = 'flickr_albums_';
