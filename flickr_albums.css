@@ -1,4 +1,4 @@
-.flickr-albums-album {
+.flickr-albums-album-photos {
   display: flex;
   justify-content: center;
   flex-flow: row wrap;
@@ -26,6 +26,7 @@
 }
 
 .flickr-albums-album {
+  display: inline-block;
   position: relative;
   width: 150px;
   height: 150px;

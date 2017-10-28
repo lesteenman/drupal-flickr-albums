@@ -12,6 +12,7 @@ function flickr_albums_settings_form() {
     '#default_value' => variable_get('flickr_albums_userId', '11467783@N05'), // TODO: Clearly remove this userID before deploying.
   );
 
+  // TODO: Implement this!
   $form['flickr_albums_token'] = array(
     '#type' => 'textfield',
     '#title' => t('Token for private pictures'),
@@ -33,7 +34,7 @@ function flickr_albums_settings_form() {
     '#type' => 'textfield',
     '#title' => t('Cron batch size'),
     '#description' => t('The amount of photos to fetch each cron run.'),
-    '#default_value' => variable_get('flickr_albums_batch_size', 500),
+    '#default_value' => variable_get('flickr_albums_batch_size', 100),
   );
 
   $form['flickr_albums_title'] = array(
@@ -59,7 +60,7 @@ function flickr_albums_settings_form() {
 
   $form['flickr_albums_get_batch_button'] = array(
     '#type' => 'submit',
-    '#value' => t('Update 500 photos immediately'),
+    '#value' => t('Update 100 photos/videos immediately'),
     '#description' => t('Update all albums immediately. This might take a long time if you have a lot of albums and/or photos in your Flickr account.'),
     '#submit' => array('flickr_albums_update_batch'),
   );
@@ -78,21 +79,20 @@ function flickr_albums_sync_status() {
   $albums_total = variable_get('flickr_albums_albums_total', 0);
   $photos_total = variable_get('flickr_albums_photos_total', 0);
   $videos_total = variable_get('flickr_albums_videos_total', 0);
-  $albums_synced = variable_get('flickr_albums_photos_synced', 0);
+  $albums_synced = variable_get('flickr_albums_albums_synced', 0);
   $photos_synced = variable_get('flickr_albums_photos_synced', 0);
   $videos_synced = variable_get('flickr_albums_videos_synced', 0);
 
   $last_update = variable_get('flickr_albums_last_sync', 'never');
 
   // Format last update date
-  if ($last_update === 'never') {
-    $statusText = "No sync has happened yet.";
-  }
-  else {
+  $statusText = "";
+  if ($last_update !== 'never') {
     $statusText = "Synced $photos_synced/$photos_total photos, $videos_synced/$videos_total videos and $albums_synced/$albums_total albums.";
     $last_update = date('Y-m-d H:i:s', $last_update);
   }
 
+  // TODO: This is really ugly
   return <<<EOD
 <div style='border: 1px solid #ddd; margin-bottom: 15px; padding: 5px;'>
   <h3>Status</h3>
@@ -104,7 +104,7 @@ EOD;
 
 function flickr_albums_update_batch() {
   module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.cron');
-  flickr_albums_process_batch(50);
+  flickr_albums_process_batch(100);
 }
 
 function flickr_albums_settings_form_validate($form, &$form_state) {

@@ -8,3 +8,5 @@ configure = admin/config/media/flickr_albums
 
 files[] = flickr_albums.install
 files[] = flickr_albums.module
+
+stylesheets[all][] = flickr_albums.css

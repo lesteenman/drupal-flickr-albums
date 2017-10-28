@@ -26,7 +26,7 @@ function flickr_albums_list() {
 
   /* dpm(['albums' => $albums, 'photos' => $photos, 'album info' => $album_info, 'photo info' => $photo_info]); */
 
-  drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/style.css');
+  // drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/style.css');
 
   $albums = array();
   $query = new EntityFieldQuery();
@@ -56,7 +56,7 @@ function flickr_albums_preprocess_photo(&$variables, $hook) {
   $photo_node = $variables['node'];
   $photo_wrapper = entity_metadata_wrapper('node', $photo_node);
 
-  drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/style.css');
+  // drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/style.css');
 
   $variables['urls'] = flickr_albums_photo_urls($photo_wrapper);
 }
@@ -65,7 +65,8 @@ function flickr_albums_preprocess_album_teaser(&$variables, $hook) {
   $album_node = $variables['node'];
   $album_wrapper = entity_metadata_wrapper('node', $album_node);
 
-  drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/style.css');
+  dpm(['include' => drupal_get_path('module', 'flickr_albums') . '/style.css']);
+  // drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/style.css');
 
   $primary = $album_wrapper->flickr_albums_primary_photo->value();
   $query = new EntityFieldQuery();
@@ -87,7 +88,7 @@ function flickr_albums_preprocess_album(&$variables, $hook) {
   $album_node = $variables['node'];
   $album_wrapper = entity_metadata_wrapper('node', $album_node);
 
-  drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/style.css');
+  // drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/style.css');
 
   $photos = array();
   $query = new EntityFieldQuery();

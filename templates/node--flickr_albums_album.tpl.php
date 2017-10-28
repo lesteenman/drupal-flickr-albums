@@ -81,7 +81,7 @@
  */
 ?>
 
-<div class='flickr-albums-album'>
+<div class='flickr-albums-album-photos'>
   <?php
   foreach ($photos as $photo) {
     $view = node_view($photo, 'teaser');
