@@ -7,7 +7,7 @@ module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.api');
  * Updates info on all albums. Does not actually update any albums.
  * Can be used when changing userId to find the number of albums and photos.
  */
-function flickr_albums_fetch_album_info() {
+function flickr_albums_update_album_info() {
 }
 
 /**

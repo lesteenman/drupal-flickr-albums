@@ -158,6 +158,11 @@ function flickr_albums_node_info() {
 }
 
 function flickr_albums_cron() {
+  variable_set('flickr_albums_cron_running', 1);
+
   module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.cron');
   flickr_albums_process_batch(variable_get('flickr_albums_batch_size'));
+
+  variable_set('flickr_albums_cron_running', 0);
+
 }

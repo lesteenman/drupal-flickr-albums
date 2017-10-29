@@ -66,6 +66,18 @@ function flickr_albums_settings_form() {
   return system_settings_form($form);
 }
 
+function flickr_albums_settings_form_submit($form, &$form_state) {
+  // Check if path is provided, if so rebuild the menu
+  if ($form_state['values']['flickr_albums_path'] != $form['flickr_albums_path']['#default_value']) {
+    variable_set('flickr_albums_path', $form_state['values']['flickr_albums_path']);
+    if (menu_rebuild()) {
+      drupal_set_message(t('Menu has been rebuilt'));
+    }
+  }
+
+  // TODO: Update album info when changing any important settings (token, userId, )
+}
+
 function flickr_albums_status_form() {
   $form = array();
 
@@ -92,6 +104,7 @@ function flickr_albums_sync_status() {
   $videos_synced = variable_get('flickr_albums_videos_synced', 0);
 
   $last_update = variable_get('flickr_albums_last_sync', 'never');
+  $cron_running = !!variable_get('flickr_albums_cron_running', 0);
 
   // Format last update date
   $statusText = "";
@@ -100,10 +113,15 @@ function flickr_albums_sync_status() {
     $last_update = date('Y-m-d H:i:s', $last_update);
   }
 
-  // TODO: This is really ugly
+  $warning = '';
+  if ($cron_running) {
+    $warning = 'WARNING: The last manual or cron run did not finish! This might be an indicator of too large a batch size for your server.';
+  }
+
   return <<<EOD
 <div style='border: 1px solid #ddd; margin-bottom: 15px; padding: 5px;'>
   <h3>Status</h3>
+  <b>$warning</b>
   $statusText<br>
   Last updated: $last_update
 </div>
@@ -118,8 +136,12 @@ function flickr_albums_update_batch() {
     return;
   }
 
+  variable_set('flickr_albums_cron_running', 1);
+
   module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.cron');
   flickr_albums_process_batch(300);
+
+  variable_set('flickr_albums_cron_running', 0);
 }
 
 function flickr_albums_settings_form_validate($form, &$form_state) {
@@ -134,16 +156,4 @@ function flickr_albums_settings_form_validate($form, &$form_state) {
   if (!intval($form_state['values']['flickr_albums_batch_size'])) {
     form_set_error('flickr_albums_batch_size', t('Not a valid batch size'));
   }
-}
-
-function flickr_albums_settings_form_submit($form, &$form_state) {
-  // Check if path is provided, if so rebuild the menu
-  if ($form_state['values']['flickr_albums_path'] != $form['flickr_albums_path']['#default_value']) {
-    variable_set('flickr_albums_path', $form_state['values']['flickr_albums_path']);
-    if (menu_rebuild()) {
-      drupal_set_message(t('Menu has been rebuilt'));
-    }
-  }
-
-  // TODO: Update album info when changing any important settings (token, userId, )
 }
