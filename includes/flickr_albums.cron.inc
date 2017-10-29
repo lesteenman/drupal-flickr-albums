@@ -4,6 +4,13 @@ module_load_include('module', 'flickrapi');
 module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.api');
 
 /**
+ * Updates info on all albums. Does not actually update any albums.
+ * Can be used when changing userId to find the number of albums and photos.
+ */
+function flickr_albums_fetch_album_info() {
+}
+
+/**
  * Updates $count photos. -1 means it will update all photos.
  */
 function flickr_albums_process_batch($batch_size) {
@@ -126,7 +133,8 @@ function flickr_albums_process_batch($batch_size) {
     // Now get photos for this album, if we're not yet over the limit
     if ($media_done >= $batch_size - 1) continue;
 
-    $photos = $flickr->photosets_getPhotos($album['id'], 'last_update')['photoset']['photo'];
+    $extras = 'url_o,original_format,last_update,date_taken,date_upload,media';
+    $photos = $flickr->photosets_getPhotos($album['id'], $extras)['photoset']['photo'];
 
     $photoWeight = 0;
     foreach ($photos as $photo) {
@@ -149,25 +157,28 @@ function flickr_albums_process_batch($batch_size) {
         $photo_wrapper = entity_metadata_wrapper('node', $photo_node);
       }
 
-      $photo_info = $flickr->photos_getInfo($photo['id'])['photo'];
+      /* $photo_info = $flickr->photos_getInfo($photo['id'])['photo']; */
 
-      // dpm(['photo' => $photo, 'node' => $photo_node, 'info' => $photo_info]);
+      /* dpm(['photo' => $photo, 'node' => $photo_node]); */
+      
+      preg_match('/[0-9]+_([0-9a-zA-Z]+)_o.jpg/', $photo['url_o'], $matches);
+      $original_secret = $matches[1];
 
       $photo_wrapper->title->set($photo['title']);
       $photo_wrapper->flickr_albums_flickr_id->set($photo['id']);
       $photo_wrapper->flickr_albums_secret->set($photo['secret']);
-      $photo_wrapper->flickr_albums_original_secret->set($photo_info['originalsecret']);
+      $photo_wrapper->flickr_albums_original_secret->set($original_secret);
       $photo_wrapper->flickr_albums_server->set($photo['server']);
       $photo_wrapper->flickr_albums_farm->set($photo['farm']);
-      $photo_wrapper->flickr_albums_original_format->set($photo_info['originalformat']);
-      $photo_wrapper->flickr_albums_media->set($photo_info['media']);
+      $photo_wrapper->flickr_albums_original_format->set($photo['originalformat']);
+      $photo_wrapper->flickr_albums_media->set($photo['media']);
       $photo_wrapper->flickr_albums_album_id->set($album['id']);
       $photo_wrapper->flickr_albums_visibility_public->set($photo['ispublic'] ? 1 : 0);
       $photo_wrapper->flickr_albums_visibility_friends->set($photo['isfriend'] ? 1 : 0);
       $photo_wrapper->flickr_albums_visibility_family->set($photo['isfamily'] ? 1 : 0);
-      $photo_wrapper->flickr_albums_date_update->set($photo_info['dates']['lastupdate']);
-      $photo_wrapper->flickr_albums_date_taken->set(strtotime($photo_info['dates']['taken']));
-      $photo_wrapper->flickr_albums_date_upload->set($photo_info['dateuploaded']);
+      $photo_wrapper->flickr_albums_date_update->set($photo['lastupdate']);
+      $photo_wrapper->flickr_albums_date_taken->set(strtotime($photo['datetaken']));
+      $photo_wrapper->flickr_albums_date_upload->set($photo['dateupload']);
       $photo_wrapper->flickr_albums_weight->set($photoWeight);
       $photo_wrapper->save();
 

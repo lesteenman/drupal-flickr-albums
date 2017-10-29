@@ -41,6 +41,22 @@ function flickr_albums_menu() {
     'file path' => drupal_get_path('module', 'flickr_albums'),
   );
 
+  $items['admin/config/media/flickr_albums/settings'] = array(
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'title' => 'Flickr Albums settings',
+  );
+
+  $items['admin/config/media/flickr_albums/status'] = array(
+    'type' => MENU_LOCAL_TASK,
+    'title' => 'Flickr Albums Sync status',
+    'description' => t('Synchronize and check synchronization status for Flickr Albums.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('flickr_albums_status_form'),
+    'access arguments' => array('administer flickr_albums'),
+    'file' => 'includes/flickr_albums.admin.inc',
+    'file path' => drupal_get_path('module', 'flickr_albums'),
+  );
+
   $path = variable_get('flickr_albums_path', 'flickr-photos');
 
   $items[$path] = array(
@@ -52,19 +68,6 @@ function flickr_albums_menu() {
     'file' => 'includes/flickr_albums.pages.inc',
     'file path' => drupal_get_path('module', 'flickr_albums'),
   );
-
-  /* $items[$path . '/%'] = array( */
-  /*   'title' => variable_get('flickr_albums_title', 'Photos'), */
-  /*   'page callback' => 'flickr_albums_album', */
-  /*   'page arguments' => array( */
-  /*     1, */
-  /*   ), */
-  /*   'access arguments' => array('view public albums'), */
-  /*   'type' => MENU_NORMAL_ITEM, */
-  /*   'weight' => -100, */
-  /*   'file' => 'includes/flickr_albums.pages.inc', */
-  /*   'file path' => drupal_get_path('module', 'flickr_albums'), */
-  /* ); */
    
   return $items;
 }

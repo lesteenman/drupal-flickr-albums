@@ -1,5 +1,7 @@
 <?php
 
+// TODO: Add a sync status page
+
 function flickr_albums_settings_form() {
   $form = array();
 
@@ -34,7 +36,7 @@ function flickr_albums_settings_form() {
     '#type' => 'textfield',
     '#title' => t('Cron batch size'),
     '#description' => t('The amount of photos to fetch each cron run.'),
-    '#default_value' => variable_get('flickr_albums_batch_size', 100),
+    '#default_value' => variable_get('flickr_albums_batch_size', 500),
   );
 
   $form['flickr_albums_title'] = array(
@@ -54,23 +56,29 @@ function flickr_albums_settings_form() {
   // TODO: Add an option to select the ordering of albums on the default page.
   // TODO: Add an option to select the ordering of photos in an album.
 
-  $form['flickr_albums_sync_status'] = array(
-    '#markup' => flickr_albums_sync_status(),
-  );
-
-  $form['flickr_albums_get_batch_button'] = array(
-    '#type' => 'submit',
-    '#value' => t('Update 100 photos/videos immediately'),
-    '#description' => t('Update all albums immediately. This might take a long time if you have a lot of albums and/or photos in your Flickr account.'),
-    '#submit' => array('flickr_albums_update_batch'),
-  );
-
   // TODO: Add:
   // - photos per page
   // - albums per page
 
   $form['#validate'][] = 'flickr_albums_settings_form_validate';
   $form['#submit'][] = 'flickr_albums_settings_form_submit';
+
+  return system_settings_form($form);
+}
+
+function flickr_albums_status_form() {
+  $form = array();
+
+  $form['flickr_albums_sync_status'] = array(
+    '#markup' => flickr_albums_sync_status(),
+  );
+
+  $form['flickr_albums_get_batch_button'] = array(
+    '#type' => 'submit',
+    '#value' => t('Update 300 photos/videos immediately'),
+    '#description' => t('Update all albums immediately. This might take a long time if you have a lot of albums and/or photos in your Flickr account.'),
+    '#submit' => array('flickr_albums_update_batch'),
+  );
 
   return system_settings_form($form);
 }
@@ -103,8 +111,15 @@ EOD;
 }
 
 function flickr_albums_update_batch() {
+  // TODO: Use the drupal batch api
+  $userId = variable_get('flickr_albums_userId', null);
+  if (!$userId) {
+    drupal_set_message('No userID set', 'error');
+    return;
+  }
+
   module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.cron');
-  flickr_albums_process_batch(100);
+  flickr_albums_process_batch(300);
 }
 
 function flickr_albums_settings_form_validate($form, &$form_state) {
@@ -129,4 +144,6 @@ function flickr_albums_settings_form_submit($form, &$form_state) {
       drupal_set_message(t('Menu has been rebuilt'));
     }
   }
+
+  // TODO: Update album info when changing any important settings (token, userId, )
 }
