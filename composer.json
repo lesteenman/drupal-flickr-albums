@@ -1,0 +1,19 @@
+{
+	"name": "drupal-flickr-albums/drupal-flickr-albums",
+	"description": "A way to show your Flickr account on your Drupal website, and add comments, show new photos and albums, etc.",
+	"type": "drupal-custom-module",
+	"license": "GPL-2.0-or-later",
+	"authors": [
+		{
+			"name": "Erik Steenman",
+			"role": "Lead developer"
+		}
+	],
+	"repositories": [
+		{
+			"type": "git",
+			"url": "https://github.com/lesteenman/drupal-flickr-albums.git"
+		}
+	],
+	"require": {}
+}
