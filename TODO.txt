@@ -1,0 +1,30 @@
+Continue moving shit to classes/services and decouple everything.
+Figure out if this is actually the correct pattern for a ServiceContainer.
+
+Rename FLickrAlbumsApi to something more sensible for something
+  that gets shit out of the database.
+
+Figure out correct code style for tests.
+Write tests for:
+- Syncing (write mocks for this)
+  - Small batches
+  - Larger batches
+  - 0-size batches
+  - Batches that are over the size of the amount of photos available
+  - Using cron
+- Clientside correct showing
+- Install/Uninstall
+
+After that works, fix syncing.
+
+Continue on frontend code once syncing works.
+
+Move to a class or similar:
+Controller?
+- flickr_albums_preprocess_photo
+- flickr_albums_preprocess_album_teaser
+- flickr_albums_preprocess_album
+
+Bonus:
+Figure out if we can use phpUnit in any useful way
+Attempt to set up a code sniffer & test runner

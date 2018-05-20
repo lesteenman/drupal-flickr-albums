@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Default theme implementation to show a list of all albums for the Flickr Albums module.
+ * Default theme implementation to show a list of all albums for this module.
  *
  * @ingroup themeable
  */

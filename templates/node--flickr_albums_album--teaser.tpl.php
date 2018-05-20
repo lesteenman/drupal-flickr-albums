@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Default theme implementation to show an individual album from the Flickr Albums module.
+ * Default theme implementation to show a single album for this module.
  *
  * Available variables:
  * - $title: the (sanitized) title of the node.
@@ -81,10 +81,10 @@
  */
 ?>
 
-<div class='flickr-albums-album' style='background-image: url(<?=$primary['large_square']?>)'>
-  <a class='flickr-albums-overlay' href="<?=url('node/' . $node->nid)?>">
+<div class='flickr-albums-album' style='background-image: url(<?php echo $primary['large_square']?>)'>
+  <a class='flickr-albums-overlay' href="<?php echo url('node/' . $node->nid)?>">
     <div class='flickr-albums-album-title'>
-      <?=$node->title?>
+      <?php echo $node->title?>
     </div>
   </a>
 </div>

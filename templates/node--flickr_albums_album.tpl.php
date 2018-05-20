@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Default theme implementation to show an individual album from the Flickr Albums module.
+ * Default theme implementation to show an individual album from this module.
  *
  * Available variables:
  * - $title: the (sanitized) title of the node.

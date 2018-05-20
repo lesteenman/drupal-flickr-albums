@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Default theme implementation to show an individual photo from the Flickr Albums module.
+ * Default theme implementation to show a single media item for this module.
  *
  * Available variables:
  * - $title: the (sanitized) title of the node.
@@ -81,9 +81,8 @@
  */
 ?>
 
-<img
-  src="<?=$urls['large'] ?>"
-  class="flickr-albums-photo-full"
-></img>
-
-<?php print render($content['comments']); ?>
+<div class='flickr-albums-photo-wrap'>
+  <a href="<?php echo url('node/' . $node->nid)?>">
+    <img src="<?php echo $urls['large_square'] ?>"></img>
+  </a>
+</div>

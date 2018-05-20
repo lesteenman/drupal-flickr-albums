@@ -1,46 +1,64 @@
 <?php
 
+/**
+ * @file
+ * Contains hooks related to installation and uninstallation of this module.
+ */
+
+module_load_include('php', 'flickr_albums', 'includes/FlickrAlbumsServiceContainer');
+
+/**
+ * Implements hook_install().
+ *
+ * Inserts the custom fields required by this module.
+ */
 function flickr_albums_install() {
   node_types_rebuild();
   add_custom_fields();
 }
 
 /**
- * Implements hook_uninstall()
+ * Implements hook_uninstall().
+ *
+ * Removes the variables and custom fields used by this module.
  */
 function flickr_albums_uninstall() {
-  variable_del('flickr_albums_userId');
-  variable_del('flickr_albums_token');
-  variable_del('flickr_albums_batch_size');
-  variable_del('flickr_albums_path');
-  variable_del('flickr_albums_albums_total');
-  variable_del('flickr_albums_photos_total');
-  variable_del('flickr_albums_videos_total');
-  variable_del('flickr_albums_photos_synced');
-  variable_del('flickr_albums_photos_synced');
-  variable_del('flickr_albums_videos_synced');
-  // TODO: Add other variables
+  $variable_service = FlickrAlbumsServiceContainer::service('variables');
+
+  // TODO: Add other variables as they are added.
+  $variable_service->del('userId');
+  $variable_service->del('token');
+  $variable_service->del('batch_size');
+  $variable_service->del('path');
+  $variable_service->del('albums_total');
+  $variable_service->del('photos_total');
+  $variable_service->del('videos_total');
+  $variable_service->del('albums_synced');
+  $variable_service->del('photos_synced');
+  $variable_service->del('videos_synced');
 
   $sql = 'select nid from {node} n where n.type = :photo_type or n.type = :album_type';
-  $result = db_query($sql, array(
-    ':photo_type' => PHOTO_NODE_TYPE,
-    ':album_type' => ALBUM_NODE_TYPE,
-  ));
-  $nodeIds = array();
-  foreach ($result as $row) $nodeIds[] = $row->nid;
+  $result = db_query($sql, [
+    ':photo_type' => FLICKR_ALBUMS_MEDIA_NODE_TYPE,
+    ':album_type' => FLICKR_ALBUMS_ALBUM_NODE_TYPE,
+  ]);
+  $nodeIds = [];
+  foreach ($result as $row) {
+    $nodeIds[] = $row->nid;
+  }
   node_delete_multiple($nodeIds);
 
   delete_custom_fields();
 
-  node_type_delete(PHOTO_NODE_TYPE);
-  node_type_delete(ALBUM_NODE_TYPE);
+  node_type_delete(FLICKR_ALBUMS_MEDIA_NODE_TYPE);
+  node_type_delete(FLICKR_ALBUMS_ALBUM_NODE_TYPE);
 }
 
 /**
- * Implements hook_requirements()
+ * Implements hook_requirements().
  */
 function flickr_albums_requirements($phase) {
-  $requirements = array();
+  $requirements = [];
 
   // Ensure translations don't break at install time.
   $t = get_t();
@@ -60,6 +78,11 @@ function flickr_albums_requirements($phase) {
   return $requirements;
 }
 
+/**
+ * Creates the custom fields used by this module.
+ *
+ * @see flickr_albums_install()
+ */
 function add_custom_fields() {
   $fields = get_custom_fields();
 
@@ -82,267 +105,290 @@ function add_custom_fields() {
   }
 }
 
+/**
+ * Deletes the custom fields used by this module.
+ *
+ * @see flickr_albums_uninstall()
+ */
 function delete_custom_fields() {
   field_delete_field($name);
 }
 
 const FIELD_PREFIX = 'flickr_albums_';
 
+/**
+ * Returns the custom fields for this module.
+ *
+ * @return array
+ *   Array containing all custom fields that this module uses.
+ */
 function get_custom_fields() {
   $t = get_t();
 
-  return array(
-    // Album fields
-    FIELD_PREFIX . 'primary_photo' => array(
-      'field' => array(
+  return [
+    // Album fields.
+    FIELD_PREFIX . 'primary_photo' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'primary_photo',
         'label' => $t('The photo NID of this album\'s primary photo'),
         'type' => 'text',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'primary_photo',
-        'bundle' => ALBUM_NODE_TYPE,
-      ),
-    ),
+        'bundle' => FLICKR_ALBUMS_ALBUM_NODE_TYPE,
+      ],
+    ],
 
-    FIELD_PREFIX . 'description' => array(
-      'field' => array(
+    FIELD_PREFIX . 'description' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'description',
         'label' => $t('Description of the album'),
         'type' => 'text',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'description',
-        'bundle' => ALBUM_NODE_TYPE,
-      ),
-    ),
+        'bundle' => FLICKR_ALBUMS_ALBUM_NODE_TYPE,
+      ],
+    ],
 
-    FIELD_PREFIX . 'count_photos' => array(
-      'field' => array(
+    FIELD_PREFIX . 'count_photos' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'count_photos',
         'label' => $t('The number of photos in this album'),
         'type' => 'number_integer',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'count_photos',
-        'bundle' => ALBUM_NODE_TYPE,
-      ),
-    ),
+        'bundle' => FLICKR_ALBUMS_ALBUM_NODE_TYPE,
+      ],
+    ],
 
-    FIELD_PREFIX . 'count_videos' => array(
-      'field' => array(
+    FIELD_PREFIX . 'count_videos' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'count_videos',
         'label' => $t('The number of videos in this album'),
         'type' => 'number_integer',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'count_videos',
-        'bundle' => ALBUM_NODE_TYPE,
-      ),
-    ),
+        'bundle' => FLICKR_ALBUMS_ALBUM_NODE_TYPE,
+      ],
+    ],
 
-    FIELD_PREFIX . 'date_create' => array(
-      'field' => array(
+    FIELD_PREFIX . 'date_create' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'date_create',
         'label' => $t('The date that this album was created'),
         'type' => 'number_integer',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'date_create',
-        'bundle' => ALBUM_NODE_TYPE,
-      ),
-    ),
+        'bundle' => FLICKR_ALBUMS_ALBUM_NODE_TYPE,
+      ],
+    ],
 
-    // Photo fields
-    FIELD_PREFIX . 'album_id' => array(
-      'field' => array(
+    // Photo fields.
+    FIELD_PREFIX . 'album_id' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'album_id',
         'label' => $t('Flickr album ID this photo is in'),
         'type' => 'text',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'album_id',
-        'bundle' => PHOTO_NODE_TYPE,
-      ),
-    ),
+        'bundle' => FLICKR_ALBUMS_MEDIA_NODE_TYPE,
+      ],
+    ],
 
-    FIELD_PREFIX . 'visibility_public' => array(
-      'field' => array(
+    FIELD_PREFIX . 'visibility_public' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'visibility_public',
         'label' => $t('If this photo is publicly visible'),
-        'settings' => array(
+        'settings' => [
           'on' => 1,
           'off' => 0,
-        ),
+        ],
         'type' => 'list_boolean',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'visibility_public',
-        'bundle' => PHOTO_NODE_TYPE,
-      ),
-    ),
+        'bundle' => FLICKR_ALBUMS_MEDIA_NODE_TYPE,
+      ],
+    ],
 
-    FIELD_PREFIX . 'visibility_friends' => array(
-      'field' => array(
+    FIELD_PREFIX . 'visibility_friends' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'visibility_friends',
         'label' => $t('If this photo is visible for friends'),
         'type' => 'list_boolean',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'visibility_friends',
-        'bundle' => PHOTO_NODE_TYPE,
-      ),
-    ),
+        'bundle' => FLICKR_ALBUMS_MEDIA_NODE_TYPE,
+      ],
+    ],
 
-    FIELD_PREFIX . 'visibility_family' => array(
-      'field' => array(
+    FIELD_PREFIX . 'visibility_family' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'visibility_family',
         'label' => $t('If this photo is visible for family'),
         'type' => 'list_boolean',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'visibility_family',
-        'bundle' => PHOTO_NODE_TYPE,
-      ),
-    ),
+        'bundle' => FLICKR_ALBUMS_MEDIA_NODE_TYPE,
+      ],
+    ],
 
-    FIELD_PREFIX . 'date_upload' => array(
-      'field' => array(
+    FIELD_PREFIX . 'date_upload' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'date_upload',
         'label' => $t('The date that this photo was uploaded'),
         'type' => 'number_integer',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'date_upload',
-        'bundle' => PHOTO_NODE_TYPE,
-      ),
-    ),
+        'bundle' => FLICKR_ALBUMS_MEDIA_NODE_TYPE,
+      ],
+    ],
 
-    FIELD_PREFIX . 'date_taken' => array(
-      'field' => array(
+    FIELD_PREFIX . 'date_taken' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'date_taken',
         'label' => $t('The date that this photo was taken'),
         'type' => 'number_integer',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'date_taken',
-        'bundle' => PHOTO_NODE_TYPE,
-      ),
-    ),
+        'bundle' => FLICKR_ALBUMS_MEDIA_NODE_TYPE,
+      ],
+    ],
 
-    FIELD_PREFIX . 'original_secret' => array(
-      'field' => array(
+    FIELD_PREFIX . 'original_secret' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'original_secret',
         'label' => $t('The secret of the original photo'),
         'type' => 'text',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'original_secret',
-        'bundle' => PHOTO_NODE_TYPE,
-      ),
-    ),
+        'bundle' => FLICKR_ALBUMS_MEDIA_NODE_TYPE,
+      ],
+    ],
 
-    FIELD_PREFIX . 'original_format' => array(
-      'field' => array(
+    FIELD_PREFIX . 'original_format' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'original_format',
         'label' => $t('The format of this photo'),
         'type' => 'text',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'original_format',
-        'bundle' => PHOTO_NODE_TYPE,
-      ),
-    ),
+        'bundle' => FLICKR_ALBUMS_MEDIA_NODE_TYPE,
+      ],
+    ],
 
-    FIELD_PREFIX . 'media' => array(
-      'field' => array(
+    FIELD_PREFIX . 'media' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'media',
         'label' => $t('The type of media'),
         'type' => 'list_text',
-        'options' => array(
-          'allowed_values' => array(
+        'options' => [
+          'allowed_values' => [
             'photo',
             'video',
-          ),
-        ),
-      ),
-      'instance' => array(
+          ],
+        ],
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'media',
-        'bundle' => PHOTO_NODE_TYPE,
-      ),
-    ),
+        'bundle' => FLICKR_ALBUMS_MEDIA_NODE_TYPE,
+      ],
+    ],
 
-    // Mixed fields
-    FIELD_PREFIX . 'flickr_id' => array(
-      'field' => array(
+    // Mixed fields.
+    FIELD_PREFIX . 'flickr_id' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'flickr_id',
         'label' => $t('Flickr ID of the object'),
         'type' => 'text',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'flickr_id',
-        'bundle' => array(ALBUM_NODE_TYPE, PHOTO_NODE_TYPE),
-      ),
-    ),
+        'bundle' => [FLICKR_ALBUMS_ALBUM_NODE_TYPE, FLICKR_ALBUMS_MEDIA_NODE_TYPE],
+      ],
+    ],
 
-    FIELD_PREFIX . 'secret' => array(
-      'field' => array(
+    FIELD_PREFIX . 'secret' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'secret',
         'label' => $t('Flickr Secret identifier'),
         'type' => 'text',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'secret',
-        'bundle' => array(ALBUM_NODE_TYPE, PHOTO_NODE_TYPE),
-      ),
-    ),
+        'bundle' => [FLICKR_ALBUMS_ALBUM_NODE_TYPE, FLICKR_ALBUMS_MEDIA_NODE_TYPE],
+      ],
+    ],
 
-    FIELD_PREFIX . 'server' => array(
-      'field' => array(
+    FIELD_PREFIX . 'server' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'server',
         'label' => $t('Flickr server identifier this object is hosted on'),
         'type' => 'text',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'server',
-        'bundle' => array(ALBUM_NODE_TYPE, PHOTO_NODE_TYPE),
-      ),
-    ),
+        'bundle' => [FLICKR_ALBUMS_ALBUM_NODE_TYPE, FLICKR_ALBUMS_MEDIA_NODE_TYPE],
+      ],
+    ],
 
-    FIELD_PREFIX . 'farm' => array(
-      'field' => array(
+    FIELD_PREFIX . 'farm' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'farm',
         'label' => $t('Flickr farm the server this object is hosted on is located'),
         'type' => 'text',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'farm',
-        'bundle' => array(ALBUM_NODE_TYPE, PHOTO_NODE_TYPE),
-      ),
-    ),
+        'bundle' => [FLICKR_ALBUMS_ALBUM_NODE_TYPE, FLICKR_ALBUMS_MEDIA_NODE_TYPE],
+      ],
+    ],
 
-    FIELD_PREFIX . 'date_update' => array(
-      'field' => array(
+    FIELD_PREFIX . 'date_update' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'date_update',
         'label' => $t('The date when this object was last updated on Flickr'),
         'type' => 'number_integer',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'date_update',
-        'bundle' => array(ALBUM_NODE_TYPE, PHOTO_NODE_TYPE),
-      ),
-    ),
+        'bundle' => [FLICKR_ALBUMS_ALBUM_NODE_TYPE, FLICKR_ALBUMS_MEDIA_NODE_TYPE],
+      ],
+    ],
 
-    FIELD_PREFIX . 'weight' => array(
-      'field' => array(
+    FIELD_PREFIX . 'last_local_update' => [
+      'field' => [
+        'field_name' => FIELD_PREFIX . 'last_local_update',
+        'label' => $t('The date when this object was last fully synced to Drupal'),
+        'type' => 'number_integer',
+      ],
+      'instance' => [
+        'field_name' => FIELD_PREFIX . 'last_local_update',
+        'bundle' => [FLICKR_ALBUMS_ALBUM_NODE_TYPE, FLICKR_ALBUMS_MEDIA_NODE_TYPE],
+      ],
+    ],
+
+    FIELD_PREFIX . 'weight' => [
+      'field' => [
         'field_name' => FIELD_PREFIX . 'weight',
         'label' => $t('Denotes the ordering of albums. Nodes with a lower weight will float to the top.'),
         'type' => 'number_integer',
-      ),
-      'instance' => array(
+      ],
+      'instance' => [
         'field_name' => FIELD_PREFIX . 'weight',
-        'bundle' => array(ALBUM_NODE_TYPE, PHOTO_NODE_TYPE),
-      ),
-    ),
-  );
+        'bundle' => [FLICKR_ALBUMS_ALBUM_NODE_TYPE, FLICKR_ALBUMS_MEDIA_NODE_TYPE],
+      ],
+    ],
+  ];
 }

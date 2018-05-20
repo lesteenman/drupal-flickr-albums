@@ -1,37 +1,29 @@
 <?php
 
-module_load_include('module', 'flickrapi'); // TODO: Should not be necessary once we get things using cron!
+/**
+ * @file
+ * Contains hooks relevant for most of the flickr_albums pages.
+ *
+ * Hooks for showing albums, album teasers, photos, videos, lists of
+ * either of those media items, etc.
+ */
+
 module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.api');
 
+/**
+ * Page callback: shows a list of albums(?)
+ *
+ * @return array
+ *   A render array for a page containing a list of albums(?)
+ */
 function flickr_albums_list() {
-  $albums = array();
-
-  /* $flickr = flickrapi_phpFlickr(); */
-
-  /* $token = variable_get('flickr_albums_token', null); */
-  /* if (!empty($token)) { */
-  /*   $flickr->setToken($token); */
-  /* } */
-
-  /* $userId = variable_get('flickr_albums_userId', '11467783@N05'); */
-  /* if ($userId) { */
-  /*   $albums = $flickr->photosets_getList($userId); */
-  /* } */
-
-  /* $album_info = $flickr->photosets_getInfo($albums['photoset'][0]['id']); */
-  /* $photos = $flickr->photosets_getPhotos($albums['photoset'][0]['id']); */
-  /* $photo_info = $flickr->photos_getInfo($photos['photoset']['photo'][0]['id']); */
-
-  /* // TODO: Get albums from the database. Based on the unique albumIds of the photo IDs. */
-
-  /* dpm(['albums' => $albums, 'photos' => $photos, 'album info' => $album_info, 'photo info' => $photo_info]); */
-
-  // drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/style.css');
-
-  $albums = array();
+  // TODO: Only show albums with photos that the current user
+  // should be able to see!
+  // TODO: Use an API service.
+  $albums = [];
   $query = new EntityFieldQuery();
   $query->entityCondition('entity_type', 'node')
-    ->entityCondition('bundle', ALBUM_NODE_TYPE)
+    ->entityCondition('bundle', FLICKR_ALBUMS_ALBUM_NODE_TYPE)
     ->fieldOrderBy('flickr_albums_weight', 'value', 'asc');
   $result = $query->execute();
 
@@ -43,35 +35,40 @@ function flickr_albums_list() {
     }
   }
 
-  $build = array(
+  $build = [
     '#theme' => 'flickr_albums_list',
     '#description' => t('List of albums'),
     '#albums' => $albums,
-  );
+  ];
 
   return drupal_render($build);
 }
 
+/**
+ * Callback that's used by flickr_albums_preprocess_node.
+ *
+ * @see flickr_albums_preprocess_node()
+ */
 function flickr_albums_preprocess_photo(&$variables, $hook) {
   $photo_node = $variables['node'];
   $photo_wrapper = entity_metadata_wrapper('node', $photo_node);
 
-  // drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/style.css');
-
   $variables['urls'] = flickr_albums_photo_urls($photo_wrapper);
 }
 
+/**
+ * Callback that's used by flickr_albums_preprocess_node.
+ *
+ * @see flickr_albums_preprocess_node()
+ */
 function flickr_albums_preprocess_album_teaser(&$variables, $hook) {
   $album_node = $variables['node'];
   $album_wrapper = entity_metadata_wrapper('node', $album_node);
 
-  dpm(['include' => drupal_get_path('module', 'flickr_albums') . '/style.css']);
-  // drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/style.css');
-
   $primary = $album_wrapper->flickr_albums_primary_photo->value();
   $query = new EntityFieldQuery();
   $query->entityCondition('entity_type', 'node')
-    ->entityCondition('bundle', PHOTO_NODE_TYPE)
+    ->entityCondition('bundle', FLICKR_ALBUMS_MEDIA_NODE_TYPE)
     ->fieldCondition('flickr_albums_flickr_id', 'value', $primary);
   $result = $query->execute();
 
@@ -84,16 +81,19 @@ function flickr_albums_preprocess_album_teaser(&$variables, $hook) {
   }
 }
 
+/**
+ * Callback that's used by flickr_albums_preprocess_node.
+ *
+ * @see flickr_albums_preprocess_node()
+ */
 function flickr_albums_preprocess_album(&$variables, $hook) {
   $album_node = $variables['node'];
   $album_wrapper = entity_metadata_wrapper('node', $album_node);
 
-  // drupal_add_css(drupal_get_path('module', 'flickr_albums') . '/style.css');
-
   $photos = array();
   $query = new EntityFieldQuery();
   $query->entityCondition('entity_type', 'node')
-    ->entityCondition('bundle', PHOTO_NODE_TYPE)
+    ->entityCondition('bundle', FLICKR_ALBUMS_MEDIA_NODE_TYPE)
     ->fieldOrderBy('flickr_albums_weight', 'value', 'asc')
     ->fieldCondition('flickr_albums_album_id', 'value', $album_wrapper->flickr_albums_flickr_id->value());
   $result = $query->execute();

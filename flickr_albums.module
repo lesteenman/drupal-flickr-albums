@@ -1,168 +1,211 @@
 <?php
 
-const PHOTO_NODE_TYPE = 'flickr_albums_photo';
-const ALBUM_NODE_TYPE = 'flickr_albums_album';
+/**
+ * @file
+ * Show Flickr photos on Drupal similar to how Flickr.com does it.
+ *
+ * Imports photos and albums from a Flickr account, allows showing these albums
+ * on your Drupal website similar to how Flickr shows these, and allows
+ * commenting on these photos.
+ */
 
+module_load_include('php', 'flickr_albums', 'includes/FlickrAlbumsServiceContainer');
+
+const FLICKR_ALBUMS_MEDIA_NODE_TYPE = 'flickr_albums_media';
+const FLICKR_ALBUMS_ALBUM_NODE_TYPE = 'flickr_albums_album';
+
+/**
+ * Implements hook_permissions().
+ */
 function flickr_albums_permission() {
-  return array(
-    'view public albums' => array(
+  return [
+    'view public albums' => [
       'title' => t('View public albums'),
-      'description' => t(''),
-    ),
-   'view friend albums' => array(
+    ],
+    'view friend albums' => [
       'title' => t('View friend-restricted albums'),
-      'description' => t(''),
-    ),
-    'view family albums' => array(
+    ],
+    'view family albums' => [
       'title' => t('View friend-restricted albums'),
-      'description' => t(''),
-    ),
-    'upload photos' => array(
-      'title' => t('Upload photos'),
-      'description' => t(''),
-    ),
-    'administer flickr_albums' => array(
+    ],
+    'upload photos' => [
+      'title' => t('Upload photos to the Flickr account'),
+    ],
+    'administer flickr_albums' => [
       'title' => t('Administer Flickr_Albums'),
-      'description' => t(''),
-    ),
-  );
+    ],
+  ];
 }
 
+/**
+ * Implements hook_menu().
+ */
 function flickr_albums_menu() {
-  $items = array();
+  $variable_service = FlickrAlbumsServiceContainer::service('variables');
+  $items = [];
 
-  $items['admin/config/media/flickr_albums'] = array(
+  $items['admin/config/media/flickr_albums'] = [
     'title' => 'Flickr Albums settings',
-    'description' => t('Configure the Flickr Albums module'),
+    'description' => 'Configure the Flickr Albums module',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('flickr_albums_settings_form'),
-    'access arguments' => array('administer flickr_albums'),
+    'page arguments' => ['flickr_albums_settings_form'],
+    'access arguments' => ['administer flickr_albums'],
     'file' => 'includes/flickr_albums.admin.inc',
     'file path' => drupal_get_path('module', 'flickr_albums'),
-  );
+  ];
 
-  $items['admin/config/media/flickr_albums/settings'] = array(
+  $items['admin/config/media/flickr_albums/settings'] = [
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'title' => 'Flickr Albums settings',
-  );
+  ];
 
-  $items['admin/config/media/flickr_albums/status'] = array(
+  $items['admin/config/media/flickr_albums/status'] = [
     'type' => MENU_LOCAL_TASK,
-    'title' => 'Flickr Albums Sync status',
-    'description' => t('Synchronize and check synchronization status for Flickr Albums.'),
+    'title' => 'Sync status',
+    'description' => 'Synchronize and check synchronization status for Flickr Albums.',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('flickr_albums_status_form'),
-    'access arguments' => array('administer flickr_albums'),
+    'page arguments' => ['flickr_albums_status_form'],
+    'access arguments' => ['administer flickr_albums'],
     'file' => 'includes/flickr_albums.admin.inc',
     'file path' => drupal_get_path('module', 'flickr_albums'),
-  );
+  ];
 
-  $path = variable_get('flickr_albums_path', 'flickr-photos');
+  $path = $variable_service->get('path', 'flickr-photos');
 
-  $items[$path] = array(
-    'title' => variable_get('flickr_albums_title', 'Photos'),
+  $items[$path] = [
+    'title' => $variable_service->get('title', 'Photos'),
     'page callback' => 'flickr_albums_list',
-    'access arguments' => array('view public albums'),
+    'access arguments' => ['view public albums'],
     'type' => MENU_NORMAL_ITEM,
     'weight' => -100,
     'file' => 'includes/flickr_albums.pages.inc',
     'file path' => drupal_get_path('module', 'flickr_albums'),
-  );
-   
+  ];
+
   return $items;
 }
 
+/**
+ * Implements hook_theme().
+ */
 function flickr_albums_theme() {
   $template_path = drupal_get_path('module', 'flickr_albums') . '/templates';
 
-  return array(
-    'flickr_albums_list' => array(
+  return [
+    'flickr_albums_list' => [
       'template' => 'list',
       'path' => $template_path,
-      'variables' => array(
+      'variables' => [
         'albums' => NULL,
-      ),
-    ),
+      ],
+    ],
 
-    'node__flickr_albums_album' => array(
-      'variables' => array(
+    'node__flickr_albums_album' => [
+      'variables' => [
         'album' => NULL,
         'photos' => NULL,
-      ),
+      ],
       'template' => 'node--flickr_albums_album',
       'path' => $template_path,
-    ),
+    ],
 
-    'node__flickr_albums_album__teaser' => array(
-      'variables' => array(
+    'node__flickr_albums_album__teaser' => [
+      'variables' => [
         'album' => NULL,
         'photos' => NULL,
-      ),
+      ],
       'template' => 'node--flickr_albums_album--teaser',
       'path' => $template_path,
-    ),
+    ],
 
-    'node__flickr_albums_photo' => array(
-      'variables' => array(
+    'node__flickr_albums_media' => [
+      'variables' => [
         'photo' => NULL,
-      ),
-      'template' => 'node--flickr_albums_photo',
+      ],
+      'template' => 'node--flickr_albums_media',
       'path' => $template_path,
-    ),
+    ],
 
-    'node__flickr_albums_photo__teaser' => array(
-      'variables' => array(
+    'node__flickr_albums_photo__teaser' => [
+      'variables' => [
         'photo' => NULL,
-      ),
-      'template' => 'node--flickr_albums_photo--teaser',
+      ],
+      'template' => 'node--flickr_albums_media--teaser',
       'path' => $template_path,
-    ),
-  );
+    ],
+  ];
 }
 
+/**
+ * Implements hook_preprocess_node().
+ */
 function flickr_albums_preprocess_node(&$variables, $hook) {
   $node = $variables['node'];
-  if (in_array($node->type, [PHOTO_NODE_TYPE, ALBUM_NODE_TYPE])) {
+  if (in_array($node->type, [FLICKR_ALBUMS_MEDIA_NODE_TYPE, FLICKR_ALBUMS_ALBUM_NODE_TYPE])) {
     module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.pages');
+
     switch ($node->type) {
-      case PHOTO_NODE_TYPE:
+      case FLICKR_ALBUMS_MEDIA_NODE_TYPE:
         flickr_albums_preprocess_photo($variables, $hook);
         break;
-      case ALBUM_NODE_TYPE:
-        if ($variables['view_mode'] === 'teaser')
+
+      case FLICKR_ALBUMS_ALBUM_NODE_TYPE:
+        if ($variables['view_mode'] === 'teaser') {
           flickr_albums_preprocess_album_teaser($variables, $hook);
-        else
+        }
+        else {
           flickr_albums_preprocess_album($variables, $hook);
+        }
         break;
     }
   }
 }
 
+/**
+ * Implements hook_node_info().
+ */
 function flickr_albums_node_info() {
-  return array(
-    PHOTO_NODE_TYPE => array(
+  return [
+    FLICKR_ALBUMS_MEDIA_NODE_TYPE => [
       'name' => t('Flickr photo'),
-      'base' => PHOTO_NODE_TYPE,
+      'base' => FLICKR_ALBUMS_MEDIA_NODE_TYPE,
       'description' => t('A photo from Flickr'),
-      'has_title' => true,
+      'has_title' => TRUE,
       'title_label' => t('Photo title'),
-    ),
-    ALBUM_NODE_TYPE => array(
+    ],
+    FLICKR_ALBUMS_ALBUM_NODE_TYPE => [
       'name' => t('Flickr album'),
-      'base' => ALBUM_NODE_TYPE,
+      'base' => FLICKR_ALBUMS_ALBUM_NODE_TYPE,
       'description' => t('An album containing photos from Flickr'),
-      'has_title' => true,
+      'has_title' => TRUE,
       'title_label' => t('Album title'),
-    ),
-  );
+    ],
+  ];
 }
 
+/**
+ * Implements hook_cron().
+ *
+ * Attempts to synchronize up to one full batch from Flickr.
+ */
 function flickr_albums_cron() {
-  variable_set('flickr_albums_cron_running', 1);
+  $logger = FlickrAlbumsServiceContainer::service('logging');
+  $logger->log('cron has been temporarily disabled.');
+  return;
 
-  module_load_include('inc', 'flickr_albums', 'includes/flickr_albums.cron');
-  flickr_albums_process_batch(variable_get('flickr_albums_batch_size'));
+  /* $logger->log('Start cron run'); */
 
-  variable_set('flickr_albums_cron_running', 0);
+  // TODO: Replace with service loader.
+  /* module_load_include('inc', 'flickr_albums', 'includes/FlickrAlbumsBatch.php'); */
+  /* $variable_service = FlickrAlbumsServiceContainer::service('variables'); */
+  /* FlickrAlbumsBatch::syncInit(); */
+  /* FlickrAlbumsBatch::syncBatch($variable_service->get('cron_batch_size')); */
+  /* FlickrAlbumsBatch::syncFinished(); */
+}
 
+/**
+ * Implements hook_form_alter() for flickr_albums_status_form().
+ */
+function flickr_albums_form_alter__flickr_albums_status_form(&$form, $form_state) {
+  $form['actions']['submit']['#value'] = 'Run';
 }

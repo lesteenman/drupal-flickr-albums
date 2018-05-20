@@ -15,5 +15,8 @@
 			"url": "https://github.com/lesteenman/drupal-flickr-albums.git"
 		}
 	],
-	"require": {}
+	"require": {
+    "drupal/drupal": "7.*",
+    "drupal/entity": "1.*"
+  }
 }
