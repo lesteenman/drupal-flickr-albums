@@ -35,13 +35,14 @@ function flickr_albums_uninstall() {
   $variable_service = FlickrAlbumsServiceContainer::service('variables');
 
   // TODO: Add other variables as they are added.
-  $variable_service->del('userId');
-  $variable_service->del('token');
-  $variable_service->del('path');
-  $variable_service->del('title');
   $variable_service->del('cron_batch_size');
   $variable_service->del('flickrgallery_token');
+  $variable_service->del('last_sync');
+  $variable_service->del('path');
   $variable_service->del('sync_running');
+  $variable_service->del('title');
+  $variable_service->del('token');
+  $variable_service->del('userId');
   $variable_service->del('albums_total');
   $variable_service->del('photos_total');
   $variable_service->del('videos_total');
