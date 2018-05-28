@@ -1,3 +1,6 @@
+Fix the installation.
+Figure out how to easily set up a completely clean installation for testing.
+
 Continue moving shit to classes/services and decouple everything.
 Figure out if this is actually the correct pattern for a ServiceContainer.
 

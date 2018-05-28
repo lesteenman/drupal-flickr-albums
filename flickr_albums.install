@@ -7,6 +7,15 @@
 
 module_load_include('php', 'flickr_albums', 'includes/FlickrAlbumsServiceContainer');
 
+// These do not exist during uninstall.
+if (!defined('FLICKR_ALBUMS_MEDIA_NODE_TYPE')) {
+  define('FLICKR_ALBUMS_MEDIA_NODE_TYPE', 'flickr_albums_media');
+}
+
+if (!defined('FLICKR_ALBUMS_ALBUM_NODE_TYPE')) {
+  define('FLICKR_ALBUMS_ALBUM_NODE_TYPE', 'flickr_albums_album');
+}
+
 /**
  * Implements hook_install().
  *
@@ -28,8 +37,11 @@ function flickr_albums_uninstall() {
   // TODO: Add other variables as they are added.
   $variable_service->del('userId');
   $variable_service->del('token');
-  $variable_service->del('batch_size');
   $variable_service->del('path');
+  $variable_service->del('title');
+  $variable_service->del('cron_batch_size');
+  $variable_service->del('flickrgallery_token');
+  $variable_service->del('sync_running');
   $variable_service->del('albums_total');
   $variable_service->del('photos_total');
   $variable_service->del('videos_total');
@@ -111,7 +123,27 @@ function add_custom_fields() {
  * @see flickr_albums_uninstall()
  */
 function delete_custom_fields() {
-  field_delete_field($name);
+  $fields = get_custom_fields();
+
+  foreach ($fields as $name => $data) {
+    if (is_array($instance['bundle'])) {
+      $bundles = $instance['bundle'];
+      foreach ($bundles as $bundle) {
+        if ($instance = field_info_instance('node', $name, $bundle)) {
+          field_delete_instance($instance);
+        }
+      }
+    }
+    else {
+      if ($instance = field_info_instance('node', $name, $instance['bundle'])) {
+        field_delete_instance($instance);
+      }
+    }
+
+    if (field_info_field($name)) { 
+      field_delete_field($name);
+    }
+  }
 }
 
 const FIELD_PREFIX = 'flickr_albums_';
