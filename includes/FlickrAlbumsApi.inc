@@ -51,10 +51,8 @@ class FlickrAlbumsApi {
     $result = $query->execute();
 
     $logger = FlickrAlbumsServiceContainer::service('logging');
-    $logger->log("Getting album $album_id, result = " . substr(print_r($result, true), 0, 1000));
 
     if (empty($result['node'])) {
-      $logger->log("Returning NULL");
       return NULL;
     }
 
@@ -84,10 +82,10 @@ class FlickrAlbumsApi {
       ->fieldCondition('flickr_albums_flickr_id', 'value', $photo_id);
     $result = $query->execute();
 
-    if (!empty($result['node'])) {
-      $node_id = array_keys($result['node'])[0];
+    if (empty($result['node'])) {
       return NULL;
     }
+    $node_id = array_keys($result['node'])[0];
     $photo_node = node_load($node_id);
     return entity_metadata_wrapper('node', $photo_node);
   }

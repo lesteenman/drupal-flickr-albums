@@ -106,9 +106,9 @@ function flickr_albums_settings_form_submit($form, &$form_state) {
     }
   }
 
-  // TODO: Do this on a separate button
-  /* module_load_include('php', 'flickr_albums', 'includes/FlickrAlbumsBatch.php'); */
-  /* FlickrAlbumsBatch::updateAlbumInfo(); */
+  // TODO: Also add a separate button for this on the sync status page.
+  module_load_include('php', 'flickr_albums', 'includes/FlickrAlbumsBatch');
+  FlickrAlbumsBatch::updateAlbumInfo();
 }
 
 /**
@@ -190,7 +190,13 @@ function flickr_albums_status_form_validate($form, &$form_state) {
  * batches and batch size.
  */
 function flickr_albums_run_batches($form, &$form_state) {
+  $logger = FlickrAlbumsServiceContainer::service('logging');
   $variable_service = FlickrAlbumsServiceContainer::service('variables');
+
+  $sync_total = $form_state['values']['sync_total'];
+  $batch_size = $form_state['values']['batch_size'];
+
+  $logger->log('Run batches: total=' . $sync_total . ', per batch=' . $batch_size);
 
   // Check if we have a Flickr userId.
   $user_id = $variable_service->get('userId', NULL);
@@ -199,12 +205,12 @@ function flickr_albums_run_batches($form, &$form_state) {
     return;
   }
 
-  $variable_service->set('sync_running', 1);
+  /* $variable_service->set('sync_running', 1); */
 
-  $batch_service = FlickrAlbumsServiceContainer::service('batch');
-
-  $sync_total = $form_state['values']['sync_total'];
-  $batch_size = $form_state['values']['batch_size'];
+  if (!$batch_size) {
+    $logger->log("Got an invalid batch size in form state: " . print_r($form_state['values'], true));
+    return;
+  }
 
   $batch = [
     'file' => drupal_get_path('module', 'flickr_albums') . '/includes/FlickrAlbumsBatch.php',
@@ -218,13 +224,15 @@ function flickr_albums_run_batches($form, &$form_state) {
     'error_message' => t('Synchronization failed'),
   ];
 
+  $logger->log("Setting batch");
+
   batch_set($batch);
 
   // TODO: Is this bit necessary?
-  $batch = &batch_get();
-  $batch['progressive'] = FALSE;
+  /* $batch = &batch_get(); */
+  /* $batch['progressive'] = FALSE; */
 
-  $variable_service->set('sync_running', 0);
+  /* $variable_service->set('sync_running', 0); */
 }
 
 /**
