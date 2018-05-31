@@ -50,8 +50,6 @@ class FlickrAlbumsApi {
       ->fieldCondition('flickr_albums_flickr_id', 'value', $album_id);
     $result = $query->execute();
 
-    $logger = FlickrAlbumsServiceContainer::service('logging');
-
     if (empty($result['node'])) {
       return NULL;
     }

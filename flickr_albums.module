@@ -189,7 +189,7 @@ function flickr_albums_node_info() {
  * Attempts to synchronize up to one full batch from Flickr.
  */
 function flickr_albums_cron() {
-  $logger = FlickrAlbumsServiceContainer::service('logging');
+  $logger = FlickrAlbumsServiceContainer::service('logger');
   $logger->log('cron has been temporarily disabled.');
   return;
 

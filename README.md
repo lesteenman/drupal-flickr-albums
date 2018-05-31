@@ -18,6 +18,12 @@ A short list of all individual features. Here's a start:
 This module currently uses the CSS3 flexbox standard, which might not be available in older browsers.
 This module requires a PHP version higher than 5.4.
 
+# Installation
+Add more installation tricks
+
+## Note for Drush users
+The FlickrApi dependency needs the oauth_common module to work. However, `drush en oauth_common` does not work. You will first have to download the `oauth` module (`drush dl oauth`), before enabling `oauth_common`.
+
 # Other Flickr modules
 There are a number of other Flickr modules for Drupal. However, it seems that most lacked support for video, different permissions based on the original media permissions, or commenting. I haven't seen any modules that combine all of these in the way this module does.
 

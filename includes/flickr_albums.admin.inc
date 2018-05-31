@@ -19,6 +19,9 @@ function flickr_albums_settings_form() {
   $variable_service = FlickrAlbumsServiceContainer::service('variables');
   $form = [];
 
+  $flickrApi = FlickrAlbumsServiceContainer::service('flickr_api');
+  $flickrApi->test();
+
   // TODO: Check if we have the correct permissions (read?), and give an error
   // otherwise!
   $form['flickr_albums_userId'] = [
@@ -108,7 +111,7 @@ function flickr_albums_settings_form_submit($form, &$form_state) {
 
   // TODO: Also add a separate button for this on the sync status page.
   module_load_include('php', 'flickr_albums', 'includes/FlickrAlbumsBatch');
-  FlickrAlbumsBatch::updateAlbumInfo();
+  FlickrAlbumsBatch::updateAllAlbums();
 }
 
 /**
@@ -146,6 +149,7 @@ function flickr_albums_status_form() {
   $form['submit'] = [
     '#type' => 'submit',
     '#value' => t('Start synchronization run'),
+    '#disabled' => FALSE,
   ];
 
   $form['clear'] = array(
@@ -155,11 +159,18 @@ function flickr_albums_status_form() {
     '#suffix' => '<br>Do this only if something seems to have gone wrong, and you want to remove all albums that had been synchronized thus far.</div>',
     '#submit' => ['flickr_albums_clear_synced_items'],
     '#name' => 'clear',
-    /* '#button_type' => 'danger', */
+    '#disabled' => FALSE,
+    // '#button_type' => 'danger',
   );
 
   $form['#validate'][] = 'flickr_albums_status_form_validate';
   $form['#submit'][] = 'flickr_albums_run_batches';
+
+  $flickrApi = FlickrAlbumsServiceContainer::service('flickr_api');
+  if (!$flickrApi->test()) {
+    $form['submit']['#disabled'] = TRUE;
+    $form['clear']['#disabled'] = TRUE;
+  }
 
   return $form;
 }
@@ -190,7 +201,7 @@ function flickr_albums_status_form_validate($form, &$form_state) {
  * batches and batch size.
  */
 function flickr_albums_run_batches($form, &$form_state) {
-  $logger = FlickrAlbumsServiceContainer::service('logging');
+  $logger = FlickrAlbumsServiceContainer::service('logger');
   $variable_service = FlickrAlbumsServiceContainer::service('variables');
 
   $sync_total = $form_state['values']['sync_total'];
@@ -208,7 +219,7 @@ function flickr_albums_run_batches($form, &$form_state) {
   /* $variable_service->set('sync_running', 1); */
 
   if (!$batch_size) {
-    $logger->log("Got an invalid batch size in form state: " . print_r($form_state['values'], true));
+    $logger->log("Got an invalid batch size in form state: " . print_r($form_state['values'], TRUE));
     return;
   }
 
@@ -220,7 +231,8 @@ function flickr_albums_run_batches($form, &$form_state) {
     ],
     'finished' => 'FlickrAlbumsBatch::syncFinished',
     'title' => t('Getting album information'),
-    'progress_message' => 'Fetching general album information from Flickr',
+    'init_message' => t('Fetching general album information from Flickr'),
+    // 'progress_message' => t('Fetched @current out of @total albums.'),.
     'error_message' => t('Synchronization failed'),
   ];
 
@@ -239,7 +251,7 @@ function flickr_albums_run_batches($form, &$form_state) {
  * Callback function for the clear action of flickr_albums_status_form().
  */
 function flickr_albums_clear_synced_items() {
-  $logger = FlickrAlbumsServiceContainer::service('logging');
+  $logger = FlickrAlbumsServiceContainer::service('logger');
   $variable_service = FlickrAlbumsServiceContainer::service('variables');
 
   // TODO: Add confirmation!
@@ -288,6 +300,9 @@ function flickr_albums_clear_synced_items() {
  * Returns HTML for flickr_albums_status_form.
  *
  * Returned HTML shows the current sync status of the module.
+ *
+ * @return string
+ *   The status HTML.
  */
 function flickr_albums_sync_status() {
   $variable_service = FlickrAlbumsServiceContainer::service('variables');
@@ -302,8 +317,11 @@ function flickr_albums_sync_status() {
   $cron_running = !!$variable_service->get('sync_running', 0);
 
   // Format last update date.
-  $status_text = "";
-  if ($last_update !== 'never') {
+  $last_update_text = $status_text = "";
+  if ($last_update === 'never') {
+    $status_text = t("No synchronization happened yet.");
+  }
+  else {
     $status_text = t("Synced @photos_synced of @photos_total photos, @videos_synced of @videos_total videos and @albums_synced of @albums_total albums.", [
       '@photos_synced' => $photos_synced,
       '@photos_total' => $photos_total,

@@ -1,9 +1,9 @@
-Fix basic syncing.
+Fix basic syncing. ISSUE: counting the total synced photos and videos.
 
-Write tests to verify syncing.
-Figure out correct code style for tests.
-Write tests for:
-- Syncing (write mocks for this)
+Write tests to verify syncing continues to work.
+- Figure out correct code style for tests.
+- Write tests for:
+  - Syncing (write mocks for this)
   - Small batches
   - Larger batches
   - 0-size batches
@@ -27,6 +27,8 @@ Controller?
 - flickr_albums_preprocess_photo
 - flickr_albums_preprocess_album_teaser
 - flickr_albums_preprocess_album
+
+Properly fix the hook_requirements
 
 Bonus:
 Figure out how to easily set up a completely clean installation for testing.

@@ -19,7 +19,7 @@ class FlickrAlbumsServiceContainer {
       'file' => 'includes/services/FlickrAlbumsVariables',
       'class' => 'FlickrAlbumsVariables',
     ],
-    'logging' => [
+    'logger' => [
       'file' => 'includes/services/FlickrAlbumsLogging',
       'class' => 'FlickrAlbumsLogging',
     ],

@@ -49,6 +49,7 @@ function flickr_albums_uninstall() {
   $variable_service->del('albums_synced');
   $variable_service->del('photos_synced');
   $variable_service->del('videos_synced');
+  $variable_service->del('last_watchdog_api_warning');
 
   $sql = 'select nid from {node} n where n.type = :photo_type or n.type = :album_type';
   $result = db_query($sql, [
@@ -71,6 +72,7 @@ function flickr_albums_uninstall() {
  * Implements hook_requirements().
  */
 function flickr_albums_requirements($phase) {
+  // TODO: Use this properly. Always show an item, only show the errors.
   $requirements = [];
 
   // Ensure translations don't break at install time.
@@ -79,12 +81,23 @@ function flickr_albums_requirements($phase) {
   // Check if FlickAPI is available.
   if ($phase == 'runtime') {
     if (!module_exists('flickrapi')) {
-      $requirements['flickrgallery'] = array(
+      $requirements['flickr_albums'] = [
         'title' => $t('Flick Gallery'),
-        'description' => $t('You need to install the !FlickrAPI module.', array('!FlickrAPI' => l($t('FlickrAPI'), 'http://drupal.org/project/flickrapi'))),
+        'description' => $t('You need to install the !FlickrAPI module to use Flickr Albums.', ['!FlickrAPI' => l($t('FlickrAPI'), 'http://drupal.org/project/flickrapi')]),
         'severity' => REQUIREMENT_ERROR,
         'value' => $t('Not installed'),
-      );
+      ];
+    }
+    else {
+      $flickrApi = FlickrAlbumsServiceContainer::service('flickr_api');
+      if (!$flickrApi->test(false)) {
+        $requirements['flickr_albums'] = [
+          'title' => $t('Flickr API'),
+          'description' => t("It seems like the Flickr API has not been set up properly. Please check there are no errors regarding the phpFlickr library, and !configure the Flickr API properly, to use Flickr Albums.", ['!configure' => l(t('configure'), 'admin/config/media/flickrapi')]),
+          'severity' => REQUIREMENT_ERROR,
+          'value' => $t('Not configured'),
+        ];
+      }
     }
   }
 
@@ -141,7 +154,8 @@ function delete_custom_fields() {
       }
     }
 
-    if (field_info_field($name)) { 
+    if ($info = field_info_field($name)) {
+      watchdog('flickr_albums', 'Found field info during uninstall: ' . substr(print_r($info, TRUE), 0, 5000));
       field_delete_field($name);
     }
   }

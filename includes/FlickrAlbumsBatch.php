@@ -9,6 +9,7 @@ module_load_include('php', 'flickr_albums', 'includes/FlickrAlbumsServiceContain
  * up larger tasks like syncing.
  */
 class FlickrAlbumsBatch {
+
   /**
    * Initialize the synchronization of a batch of media items.
    *
@@ -25,7 +26,7 @@ class FlickrAlbumsBatch {
    */
   public static function syncInit($sync_total, int $batch_size, array &$context = NULL) {
     $variable_service = FlickrAlbumsServiceContainer::service('variables');
-    $logger = FlickrAlbumsServiceContainer::service('logging');
+    $logger = FlickrAlbumsServiceContainer::service('logger');
     $logger->log("Initialize");
 
     $variable_service->set('sync_running', 1);
@@ -33,7 +34,9 @@ class FlickrAlbumsBatch {
     $logger->log('Initialize batch update');
 
     // Make sure we're up-to-date on the number of albums and photos.
-    self::updateAlbumInfo();
+    self::updateAllAlbums();
+
+    $logger->log("Album count: " . count(FlickrAlbumsApi::getAlbums()));
 
     $photos_total = $variable_service->get('photos_total', 0);
     $videos_total = $variable_service->get('videos_total', 0);
@@ -62,15 +65,18 @@ class FlickrAlbumsBatch {
 
     $batch_size = min($batch_size, $sync_total);
 
-    $batch_count = $sync_total / $batch_size;
-
-    $context['results'] = [
-      'batch_size' => $batch_size,
-      'batch_count' => $batch_count,
-    ];
+    $batch_count = intval(ceil($sync_total / $batch_size));
 
     $logger->log("Actually update $sync_total photos in batch sizes of $batch_size, so a total of $batch_count batches.");
-    $context['message'] = "Processed 0 out of $batch_count batches. Processing $batch_size photos this batch.";
+    if ($context) {
+      $context['results'] = [
+        'batch_size' => $batch_size,
+        'batch_count' => $batch_count,
+      ];
+
+      $context['progress_message'] = t("Updating individual albums...");
+      $context['message'] = self::progressMessage(0, $batch_count);
+    }
   }
 
   /**
@@ -84,7 +90,7 @@ class FlickrAlbumsBatch {
   public static function syncBatch(&$context) {
     $variable_service = FlickrAlbumsServiceContainer::service('variables');
     $flickr = FlickrAlbumsServiceContainer::service('flickr_api');
-    $logger = FlickrAlbumsServiceContainer::service('logging');
+    $logger = FlickrAlbumsServiceContainer::service('logger');
 
     if (is_int($context)) {
       $batch_size = $context;
@@ -98,8 +104,8 @@ class FlickrAlbumsBatch {
         $context['sandbox']['progress'] = 0;
         $context['sandbox']['max'] = $context['results']['batch_count'];
 
-        $logger->log("Syncing the first batch! Results = " . print_r($context['results'], true));
-        $logger->log("Sandbox = " . print_r($context['sandbox'], true));
+        $logger->log("Syncing the first batch! Results = " . print_r($context['results'], TRUE));
+        $logger->log("Sandbox = " . print_r($context['sandbox'], TRUE));
       }
       else {
         $batch_size = $context['sandbox']['batch_size'];
@@ -141,7 +147,10 @@ class FlickrAlbumsBatch {
     $find_last_album = $find_last_media = NULL;
 
     $batch_start = TRUE;
+    $batch_kill = FALSE;
     if ($context && isset($context['sandbox']['last_album'])) {
+      // $batch_kill = TRUE;
+
       $find_last_album = $context['sandbox']['last_album'];
       $find_last_media = $context['sandbox']['last_media'];
 
@@ -151,16 +160,28 @@ class FlickrAlbumsBatch {
     // Update all albums.
     foreach ($albums as $album_wrapper) {
       $album_id = $album_wrapper->flickr_albums_flickr_id->value();
-      $album_photos_total = $album_wrapper->flickr_albums_count_photos->value();
-      $album_videos_total = $album_wrapper->flickr_albums_count_videos->value();
+      if (!$album_id) {
+        $values = [];
+        foreach ($album_wrapper->getPropertyInfo() as $key => $val) {
+          $values[$key] = $album_wrapper->$key->value();
+        }
+        $logger->error("Found an album without a flickr id! " . substr(print_r($values, TRUE), 0, 15000));
+        $batch_kill = TRUE;
+        break;
+      }
+
+      $album_photos_total = intval($album_wrapper->flickr_albums_count_photos->value());
+      $album_videos_total = intval($album_wrapper->flickr_albums_count_videos->value());
 
       // Skip until we reach the last album we stopped at.
-      if ($find_last_album !== NULL && $find_last_album !== $album_id) {
-        continue;
-      }
-      $find_last_album = NULL;
+      if ($find_last_album !== NULL) {
+        if ($find_last_album !== $album_id) {
+          continue;
+        }
 
-      $last_album = $album_id;
+        $logger->log("Found the last album again, pick it up from here. album_id=$album_id");
+        $find_last_album = NULL;
+      }
 
       // If we're already over our batch size, don't actually
       // process this album.
@@ -168,28 +189,28 @@ class FlickrAlbumsBatch {
         break;
       }
 
-      // Increase our total counts.
-      /* $photos_total += $album_wrapper->flickr_albums_count_photos->value(); */
-      /* $videos_total += $album_wrapper->flickr_albums_count_videos->value(); */
+      $last_album = $album_id;
 
       // Get the amount of photos we've synced in this album before.
+      // TODO: Move to some class
       $photos_synced_query = new EntityFieldQuery();
       $photos_synced_query->entityCondition('entity_type', 'node')
         ->entityCondition('bundle', FLICKR_ALBUMS_MEDIA_NODE_TYPE)
         ->fieldCondition('flickr_albums_album_id', 'value', $album_id);
       $photos_synced_query->fieldCondition('flickr_albums_media', 'value', 'photo');
-      $album_photos_synced = $photos_synced_query->count()->execute();
+      $album_photos_synced = intval($photos_synced_query->count()->execute());
 
       // Get the amount of videos we've synced in this album before.
+      // TODO: Move to some class
       $videos_synced_query = new EntityFieldQuery();
       $videos_synced_query->entityCondition('entity_type', 'node')
         ->entityCondition('bundle', FLICKR_ALBUMS_MEDIA_NODE_TYPE)
         ->fieldCondition('flickr_albums_album_id', 'value', $album_id);
       $videos_synced_query->fieldCondition('flickr_albums_media', 'value', 'video');
-      $album_videos_synced = $videos_synced_query->count()->execute();
+      $album_videos_synced = intval($videos_synced_query->count()->execute());
 
       if ($album_photos_synced > $album_photos_total || $album_videos_synced > $album_videos_total) {
-        $logger->log("WARNING: Album {$album_id} has $album_photos_synced/$album_photos_total photos, $album_videos_synced/$album_videos_total videos!");
+        $logger->warn("Album {$album_id} has $album_photos_synced/$album_photos_total photos, $album_videos_synced/$album_videos_total videos!");
       }
 
       // Last time we've fully synced this album to Drupal.
@@ -198,6 +219,7 @@ class FlickrAlbumsBatch {
       // Last update on Flickr.
       $date_update = $album_wrapper->flickr_albums_date_update->value();
       if ($last_local_update >= $date_update) {
+        $logger->log("Don't actually update album $album_id, we already have all $album_photos_total ($album_photos_synced) photos and $album_videos_total ($album_videos_synced) videos. local update $last_local_update >= flickr update $date_update");
         $videos_synced += $album_videos_synced;
         $photos_synced += $album_photos_synced;
         continue;
@@ -212,9 +234,13 @@ class FlickrAlbumsBatch {
 
       $photo_weight = 1;
       $all_album_photos_synced = TRUE;
+      $album_media_done = 0;
       foreach ($photos as $photo) {
         // Skip until we reach the last photo we stopped at.
         if ($find_last_media !== NULL && $find_last_media !== $photo['id']) {
+          // Done last batch.
+          $album_media_done++;
+          $photo_weight++;
           continue;
         }
         $find_last_media = NULL;
@@ -232,28 +258,40 @@ class FlickrAlbumsBatch {
 
         // Update the photo.
         list($photo_wrapper, $done) = self::updatePhoto($album_id, $photo, $photo_weight++);
+        $album_media_done++;
 
         if ($done) {
+          // $logger->log("Media done! {$photo_wrapper->flickr_albums_flickr_id->value()}");
           $media_done++;
         }
 
+        // $logger->log("Wrapper is of type {$photo_wrapper->flickr_albums_media->value()}");
         if ($photo_wrapper->flickr_albums_media->value() === 'video') {
           $videos_synced++;
           if ($done) {
+            $album_videos_synced++;
             $videos_done++;
           }
         }
         else {
           $photos_synced++;
           if ($done) {
+            $album_photos_synced++;
             $photos_done++;
           }
         }
       }
 
       if ($all_album_photos_synced) {
-        $album_wrapper->flickr_albums_last_local_update->set(time());
-        $album_wrapper->save();
+        $logger->log("Completely synced album $album_id");
+
+        if ($album_photos_total !== $album_photos_synced || $album_videos_total !== $album_videos_synced) {
+          $logger->error("Attempt to mark album $album_id as done, while we only have " . json_encode($album_photos_synced) . " of " . json_encode($album_photos_total) . " photos synced, and " . json_encode($album_videos_synced) . " of " . json_encode($album_videos_total) . "! Media done was " . json_encode($album_media_done));
+        }
+        else {
+          $album_wrapper->flickr_albums_last_local_update->set(time());
+          $album_wrapper->save();
+        }
       }
     }
 
@@ -262,18 +300,23 @@ class FlickrAlbumsBatch {
 
     $variable_service->set('last_sync', time());
 
+    if ($batch_kill) {
+      // TODO: remove.
+      return;
+    }
+
     if ($context) {
-      $context['message'] = "Synchronized " . ($photos_done + $videos_done) . " photos and/or videos in the previous batch...";
+      $context['message'] = self::progressMessage($context['sandbox']['progress'], $context['sandbox']['max']);
 
       if (!is_int($context['results'])) {
         $context['results'] = 0;
       }
-      $context['results'] += $photos_synced + $videos_synced;
+      $context['results'] += $photos_done + $videos_done;
 
       $context['sandbox']['progress']++;
 
       if ($context['sandbox']['progress'] === $context['sandbox']['max']) {
-        $logger->log("Finished! Sandbox = " . print_r($context['sandbox'], true));
+        $logger->log("Finished! Sandbox = " . print_r($context['sandbox'], TRUE));
         $context['finished'] = 1;
       }
       else {
@@ -300,7 +343,7 @@ class FlickrAlbumsBatch {
    */
   public static function syncFinished($success = NULL, $results = NULL, array $operations = NULL) {
     $variable_service = FlickrAlbumsServiceContainer::service('variables');
-    $logger = FlickrAlbumsServiceContainer::service('logging');
+    $logger = FlickrAlbumsServiceContainer::service('logger');
 
     $logger->log('Flickr albums batch finished!');
     $variable_service->set('sync_running', 0);
@@ -323,7 +366,7 @@ class FlickrAlbumsBatch {
    */
   public static function clearBatch(array &$context) {
     $variable_service = FlickrAlbumsServiceContainer::service('variables');
-    $logger = FlickrAlbumsServiceContainer::service('logging');
+    $logger = FlickrAlbumsServiceContainer::service('logger');
 
     $context['finished'] = 0;
     // Continue from the last album and photo, or the first if not set.
@@ -361,7 +404,7 @@ class FlickrAlbumsBatch {
    */
   public static function clearFinished($success = NULL, $results = NULL, array $operations = NULL) {
     $variable_service = FlickrAlbumsServiceContainer::service('variables');
-    $logger = FlickrAlbumsServiceContainer::service('logging');
+    $logger = FlickrAlbumsServiceContainer::service('logger');
 
     /* $variable_service->set('albums_synced', 0); */
     /* $variable_service->set('photos_synced', 0); */
@@ -372,9 +415,9 @@ class FlickrAlbumsBatch {
   /**
    * Synchronizes basic info of all albums from Flickr to Drupal.
    */
-  public static function updateAlbumInfo() {
+  public static function updateAllAlbums() {
     $variable_service = FlickrAlbumsServiceContainer::service('variables');
-    $logger = FlickrAlbumsServiceContainer::service('logging');
+    $logger = FlickrAlbumsServiceContainer::service('logger');
     $flickr_api = FlickrAlbumsServiceContainer::service('flickr_api');
 
     $token = $variable_service->get('token', NULL);
@@ -386,7 +429,7 @@ class FlickrAlbumsBatch {
     }
 
     $flickr_albums = [];
-    $result = null;
+    $result = NULL;
     while (!$result || $result['page'] < $result['pages']) {
       $page = $result ? $result['page'] + 1 : 1;
       $result = $flickr_api->photosets_getList($userId, $page);
@@ -396,13 +439,15 @@ class FlickrAlbumsBatch {
         return;
       }
 
+      $logger->log("Existing albums = " . substr(print_r($flickr_albums, TRUE), 0, 5000) . ", \nadding " . substr(print_r($result, TRUE), 0, 5000));
       $flickr_albums += $result['photoset'];
     }
 
-    $albums_total = 0; // Total albums found.
+    $albums_total = 0;
     $photos_total = 0;
     $videos_total = 0;
-    $albums_done = 0; // Albums updated this run.
+    // Albums updated this run.
+    $albums_updated = 0;
 
     foreach ($flickr_albums as $flickr_album) {
       $albums_total++;
@@ -411,11 +456,11 @@ class FlickrAlbumsBatch {
 
       $done = self::updateAlbum($flickr_album, $albums_total);
       if ($done) {
-        $albums_done++;
+        $albums_updated++;
       }
     }
 
-    $logger->log("Updated album info, we have a total of $albums_total albums.");
+    $logger->log("Updated album info, we have a total of $albums_total albums, of which $albums_updated were updated this run.");
 
     $variable_service->set('albums_total', $albums_total);
     $variable_service->set('photos_total', $photos_total);
@@ -438,14 +483,24 @@ class FlickrAlbumsBatch {
    *   up-to-date.
    */
   private static function updateAlbum(array $flickr_album, $order) {
+    $logger = FlickrAlbumsServiceContainer::service('logger');
     $flickr_api = FlickrAlbumsServiceContainer::service('flickr_api');
 
-    $album_wrapper = FlickrAlbumsApi::getAlbum($flickr_album['id']);
+    $flickr_id = $flickr_album['id'];
+    if (!$flickr_id) {
+      $logger->error("No flickr id found in album: " . substr(print_r($flickr_album, TRUE), 0, 1000));
+    }
+    $album_wrapper = FlickrAlbumsApi::getAlbum($flickr_id);
 
     if ($album_wrapper) {
       // Album exists, test if it has changed.
       if ($album_wrapper->flickr_albums_date_update->value() >= $flickr_album['date_update']) {
-        return FALSE;
+        if ($album_wrapper->flickr_albums_flickr_id->value()) {
+          return FALSE;
+        }
+        else {
+          $logger->log("Got an album that *should* be up-to-date, but doesn't have a flickr id! " . print_r([$album_wrapper->getPropertyInfo(), $album_wrapper->flickr_albums_flickr_id->value()], TRUE));
+        }
       }
     }
     else {
@@ -461,7 +516,7 @@ class FlickrAlbumsBatch {
     // Make sure we're up to date on all changes to the album.
     $album_wrapper->title->set($album_info['title']['_content']);
     $album_wrapper->flickr_albums_description->set($album_info['description']['_content']);
-    $album_wrapper->flickr_albums_flickr_id->set($flickr_album['id']);
+    $album_wrapper->flickr_albums_flickr_id->set($flickr_id);
     $album_wrapper->flickr_albums_secret->set($flickr_album['secret']);
     $album_wrapper->flickr_albums_primary_photo->set($flickr_album['primary']);
     $album_wrapper->flickr_albums_server->set($flickr_album['server']);
@@ -494,12 +549,13 @@ class FlickrAlbumsBatch {
    */
   private static function updatePhoto($flickr_album_id, array $flickr_photo, int $weight) {
     $variable_service = FlickrAlbumsServiceContainer::service('variables');
-    $logger = FlickrAlbumsServiceContainer::service('logging');
+    $logger = FlickrAlbumsServiceContainer::service('logger');
 
     $photo_wrapper = FlickrAlbumsApi::getPhoto($flickr_album_id, $flickr_photo['id']);
 
     if ($photo_wrapper) {
       // Already exist, check if it is still up-to-date.
+      $logger->log("Skip photo? Wrapper = {$photo_wrapper->flickr_albums_date_update->value()}, album = {$photo_wrapper->flickr_albums_album_id}, flickr_photo = " . print_r($flickr_photo, TRUE));
       if ($flickr_photo['lastupdate'] <= $photo_wrapper->flickr_albums_date_update->value()) {
         return [$photo_wrapper, FALSE];
       }
@@ -534,6 +590,21 @@ class FlickrAlbumsBatch {
     $photo_wrapper->save();
 
     return [$photo_wrapper, TRUE];
+  }
+
+  /**
+   * Get a progress message for the batch API.
+   *
+   * @param int $progress
+   *   The amount of batches that have been done so far.
+   * @param int $max
+   *   The maximum amount of batches.
+   *
+   * @return string
+   *   A user-facing message indicating the progress.
+   */
+  private static function progressMessage($progress, $max) {
+    return t("@progress of @max batches done.", ['@progress' => $progress, '@max' => $max]);
   }
 
 }
